@@ -193,9 +193,9 @@ export default function Home() {
             Trace<span className="text-red-600">Motorsports</span>
           </p>
           <div className="text-zinc-600 text-sm flex gap-6">
-            <a href="#" className="hover:text-red-500 transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-red-500 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-red-500 transition-colors">Contact</a>
+            <Link href="/terms" className="hover:text-red-500 transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-red-500 transition-colors">Privacy Policy</Link>
+            <Link href="/contact" className="hover:text-red-500 transition-colors">Contact</Link>
           </div>
           <p className="text-zinc-700 text-xs mt-8">© 2026 Trace Motorsports. All rights reserved.</p>
         </div>
