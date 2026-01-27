@@ -1,36 +1,13 @@
+import { Navbar } from '@/components/navbar'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Check } from 'lucide-react'
 
-import { createClient } from '@/lib/supabase-server'
-
 export default async function Home() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
   return (
     <main className="min-h-screen bg-black text-white selection:bg-red-500/30">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-black/80 backdrop-blur-xl">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black tracking-tighter uppercase italic">
-            Trace<span className="text-red-600">Motorsports</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href={user ? "/dashboard" : "/login"}>
-              <Button variant="ghost" className="text-zinc-400 hover:text-white hover:bg-white/5">
-                {user ? "Dashboard" : "Log In"}
-              </Button>
-            </Link>
-            <Link href={user ? "/dashboard" : "/login"}>
-              <Button className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-wide skew-x-[-10deg]">
-                <span className="skew-x-[10deg]">{user ? "Open Command Center" : "Get Access"}</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">

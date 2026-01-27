@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { getUserTier, getTierLimits } from '@/lib/subscription'
 import { Lock } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

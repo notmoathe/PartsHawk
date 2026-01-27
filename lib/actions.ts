@@ -26,7 +26,7 @@ export async function createHawk(formData: FormData) {
     // "Setup Supabase Client (I will provide API keys later)."
     // I can't really test this without the keys. 
 
-    const { error } = await supabase.from('hawks').insert({
+    const { data: hawk, error } = await supabase.from('hawks').insert({
         user_id: user.id,
         keywords,
         max_price: maxPrice,
@@ -34,10 +34,33 @@ export async function createHawk(formData: FormData) {
         negative_keywords: negativeKeywords,
         source,
         status: 'active',
-    })
+    }).select().single()
 
     if (error) {
         throw new Error(error.message)
+    }
+
+    // TRIGGER IMMEDIATE SCRAPE ("Go All Out")
+    // We do not await this to keep UI snappy? 
+    // actually user wants "actual notification", so let's await it and show result count
+    try {
+        const { scrape } = await import('./scraper')
+        const results = await scrape(source as any, keywords, maxPrice || 1000000, negativeKeywords ? negativeKeywords.split(',').map(s => s.trim()) : [])
+
+        if (results.length > 0) {
+            const insertData = results.map(r => ({
+                hawk_id: hawk.id,
+                title: r.title,
+                price: r.price,
+                url: r.url,
+                image_url: r.imageUrl,
+                source: source
+            }))
+            await supabase.from('found_listings').insert(insertData)
+        }
+    } catch (err) {
+        console.error("Immediate scrape failed:", err)
+        // Don't fail the request, just log
     }
 
     revalidatePath('/dashboard')
