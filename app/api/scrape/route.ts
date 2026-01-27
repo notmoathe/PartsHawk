@@ -55,7 +55,8 @@ export async function POST(request: Request) {
             hawk.source,
             hawk.keywords,
             hawk.max_price || 1000000,
-            hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : []
+            hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : [],
+            hawk.vehicle_string || undefined
         )
 
         console.log(`[Scrape API] Scraper returned ${results.length} items`)
@@ -78,23 +79,39 @@ export async function POST(request: Request) {
                 throw insertError
             }
 
-            // 5. Send Email Notification
-            // Need user email.
-            // If the user triggered this from client, we have their session maybe?
-            // NOTE: This API is "public" triggered by client fetch, so we should check auth policies.
-            // But we already fetched the hawk.
-            // We need the USER'S email.
+            // 5. Notifications
+            // Fetch fresh details with user data using Admin client just to be sure
+            const { data: freshHawk } = await supabaseAdmin
+                .from('hawks')
+                .select('*, users:user_id ( email ), webhook_url, vehicle_string')
+                .eq('id', hawk.id)
+                .single() as any
 
-            // Fetch user email if not in session
-            // The 'user_id' is on the hawk.
-            // But auth.users table is private.
-            // We can send to the logged-in user if the session is valid.
-            // If this is a CRON job later, we need specific admin rights.
+            // Send Email
+            if (freshHawk?.users?.email) {
+                await sendNotificationEmail(freshHawk.users.email, freshHawk.keywords, insertData)
+            }
 
-            if (user && user.email) {
-                await sendNotificationEmail(user.email, hawk.keywords, insertData)
-            } else {
-                console.log('[Scrape API] No user email found in session to send notification.')
+            // Send Webhook (Discord/Slack)
+            if (freshHawk?.webhook_url) {
+                try {
+                    await fetch(freshHawk.webhook_url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: `🦅 **PartHawk Alert**\nFound ${results.length} new items for **${freshHawk.keywords}**\n${freshHawk.vehicle_string ? `*Vehicle: ${freshHawk.vehicle_string}*\n` : ''}`,
+                            embeds: results.slice(0, 10).map((r: any) => ({
+                                title: r.title,
+                                url: r.url,
+                                description: `Price: $${r.price}\nSource: ${freshHawk.source}`,
+                                thumbnail: { url: r.imageUrl },
+                                color: 14548992 // Red
+                            }))
+                        })
+                    })
+                } catch (webhookErr) {
+                    console.error('[Scrape API] Webhook failed:', webhookErr)
+                }
             }
         }
 
