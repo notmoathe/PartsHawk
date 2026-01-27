@@ -59,8 +59,8 @@ export function FoundListings({ listings }: { listings: any[] }) {
                                 {/* Image */}
                                 <div className="relative w-24 h-24 shrink-0 bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800">
                                     {item.image_url ? (
-                                        <img 
-                                            src={item.image_url} 
+                                        <img
+                                            src={item.image_url}
                                             alt={item.title}
                                             className="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity"
                                         />
@@ -69,7 +69,7 @@ export function FoundListings({ listings }: { listings: any[] }) {
                                             NO IMG
                                         </div>
                                     )}
-                                    {/* Deal Badge moved to image overlay for style */}
+                                    {/* Deal Badge */}
                                     {isGoodDeal && (
                                         <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 uppercase tracking-wide shadow-sm">
                                             -{discount}%
@@ -89,9 +89,9 @@ export function FoundListings({ listings }: { listings: any[] }) {
                                                     ${item.price.toLocaleString()}
                                                 </div>
                                                 {isGoodDeal && (
-                                                     <div className="text-[10px] text-zinc-500 font-mono line-through">
+                                                    <div className="text-[10px] text-zinc-500 font-mono line-through">
                                                         ${maxPrice?.toLocaleString()}
-                                                     </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -100,30 +100,31 @@ export function FoundListings({ listings }: { listings: any[] }) {
                                                 {item.source}
                                             </Badge>
                                             {isGoodDeal && (
-                                                 <Badge className="bg-gradient-to-r from-orange-600 to-red-600 text-white border-0 text-[10px] uppercase font-black italic tracking-wider animate-pulse">
+                                                <Badge className="bg-gradient-to-r from-orange-600 to-red-600 text-white border-0 text-[10px] uppercase font-black italic tracking-wider animate-pulse">
                                                     🔥 Great Deal
-                                                 </Badge>
+                                                </Badge>
                                             )}
                                         </div>
+                                        <div className="mt-1">
+                                            <span className="text-zinc-600 text-xs font-mono">
+                                                {new Date(item.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
                                     </div>
-                                        <span className="text-zinc-600 text-xs font-mono">
-                                            {new Date(item.created_at).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                </div>
 
-                                <div className="flex justify-end mt-2">
-                                    <Button asChild size="sm" className="h-7 bg-white text-black hover:bg-zinc-200 font-bold uppercase text-[10px] tracking-widest rounded-sm">
-                                        <Link href={item.url} target="_blank" rel="noopener noreferrer">
-                                            View Listing <ExternalLink className="w-3 h-3 ml-1" />
-                                        </Link>
-                                    </Button>
+                                    <div className="flex justify-end mt-2">
+                                        <Button asChild size="sm" className="h-7 bg-white text-black hover:bg-zinc-200 font-bold uppercase text-[10px] tracking-widest rounded-sm">
+                                            <Link href={item.url} target="_blank" rel="noopener noreferrer">
+                                                View Listing <ExternalLink className="w-3 h-3 ml-1" />
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
-            </div>
-                    ))}
-        </div>
-            </CardContent >
-        </Card >
+                        )
+                    })}
+                </div>
+            </CardContent>
+        </Card>
     )
 }
