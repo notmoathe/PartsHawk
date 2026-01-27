@@ -52,6 +52,14 @@ export async function GET(request: Request) {
         console.log(`[Cron] Scanning Hawk: ${hawk.id} (${hawk.keywords})`)
 
         try {
+            // 1. Fetch User Email Securely (Bypass Public/Auth Schema Join issues)
+            const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(hawk.user_id)
+            const userEmail = userData?.user?.email
+
+            if (userError || !userEmail) {
+                console.warn(`[Cron] Could not find user email for hawk ${hawk.id}`, userError)
+            }
+
             // Perform Scrape
             const results = await scrape(
                 hawk.source,
