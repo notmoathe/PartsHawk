@@ -76,7 +76,7 @@ export function EditHawkDialog({ hawk }: { hawk: Hawk }) {
                             id="max_price"
                             name="max_price"
                             type="number"
-                            defaultValue={hawk.max_price}
+                            defaultValue={hawk.max_price ?? ''}
                             className="bg-black border-zinc-800 text-white focus-visible:ring-red-600"
                         />
                     </div>
