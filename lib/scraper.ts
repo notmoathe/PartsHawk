@@ -137,79 +137,78 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                 // Clean price
                 const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
 
+                // Clean price
+                const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
+                // Clean Image URL
+                let finalImageUrl = imgEl?.getAttribute('src') || ''
+                if (finalImageUrl.startsWith('/')) finalImageUrl = `https://www.ebay.com${finalImageUrl}`
+
                 return {
                     listingId,
                     title,
                     price,
-                    let imageUrl = imgEl?.getAttribute('src') || ''
-                if(imageUrl.startsWith('/')) imageUrl = `https://www.ebay.com${imageUrl}` // Relative path
+                    url: `https://www.ebay.com/itm/${listingId}`,
+                    imageUrl: finalImageUrl
+                }
+            }).filter(item => item !== null)
 
-            return {
-                listingId,
-                title,
-                price,
-                url: `https://www.ebay.com/itm/${listingId}`,
-                imageUrl
-            }
-        }).filter(item => item !== null)
+            if (standardResults.length > 0) return standardResults;
 
-        if (standardResults.length > 0) return standardResults;
+            // Fallback: Try finding links that look like items
+            // This captures cases where the class names might differ (e.g. mobile view)
+            const fallbackLinks = Array.from(document.querySelectorAll('a[href*="/itm/"]'));
+            return fallbackLinks.map(link => {
+                const url = link.getAttribute('href') || '';
+                const idMatch = url.match(/\/itm\/(\d+)/);
+                if (!idMatch) return null;
 
-        // Fallback: Try finding links that look like items
-        // This captures cases where the class names might differ (e.g. mobile view)
-        const fallbackLinks = Array.from(document.querySelectorAll('a[href*="/itm/"]'));
-        return fallbackLinks.map(link => {
-            const url = link.getAttribute('href') || '';
-            const idMatch = url.match(/\/itm\/(\d+)/);
-            if (!idMatch) return null;
+                // Try to find title/price relative to the link
+                // This is a naive heuristic but better than 0 results
+                const container = link.closest('li') || link.closest('div');
+                const title = container?.innerText.split('\n')[0] || 'Unknown Item';
+                const priceText = container?.innerText.match(/\$[\d,.]+/)?.[0] || '0';
+                const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                const imageUrl = container?.querySelector('img')?.getAttribute('src') || '';
 
-            // Try to find title/price relative to the link
-            // This is a naive heuristic but better than 0 results
-            const container = link.closest('li') || link.closest('div');
-            const title = container?.innerText.split('\n')[0] || 'Unknown Item';
-            const priceText = container?.innerText.match(/\$[\d,.]+/)?.[0] || '0';
-            const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-            const imageUrl = container?.querySelector('img')?.getAttribute('src') || '';
+                return {
+                    listingId: idMatch[1],
+                    title: title.substring(0, 100), // Safety cap
+                    price: price || 0,
+                    url: url,
+                    imageUrl: imageUrl
+                }
+            }).filter(i => {
+                if (!i || i.price <= 0) return false;
+                // strict junk filter
+                const lowerTitle = i.title.toLowerCase();
+                if (lowerTitle.includes('shop on ebay')) return false;
+                if (i.price === 20.00 && lowerTitle.includes('shop')) return false;
+                return true;
+            }).slice(0, 10); // Limit fallbacks
+        }) as ScraperResult[]
 
-            return {
-                listingId: idMatch[1],
-                title: title.substring(0, 100), // Safety cap
-                price: price || 0,
-                url: url,
-                imageUrl: imageUrl
-            }
-        }).filter(i => {
-            if (!i || i.price <= 0) return false;
-            // strict junk filter
-            const lowerTitle = i.title.toLowerCase();
-            if (lowerTitle.includes('shop on ebay')) return false;
-            if (i.price === 20.00 && lowerTitle.includes('shop')) return false;
-            return true;
-        }).slice(0, 10); // Limit fallbacks
-    }) as ScraperResult[]
+        if (results.length === 0) {
+            const bodySnippet = await page.evaluate(() => document.body.innerText.slice(0, 500))
+            console.log(`[Scrape Debug] 0 items found. Body snippet: ${bodySnippet}`)
+        }
 
-    if (results.length === 0) {
-        const bodySnippet = await page.evaluate(() => document.body.innerText.slice(0, 500))
-        console.log(`[Scrape Debug] 0 items found. Body snippet: ${bodySnippet}`)
+        // Filter negative keywords
+        const filteredResults = results.filter(item => {
+            if (!item) return false
+            const titleLower = item.title.toLowerCase()
+            return !negativeKeywords.some(neg => titleLower.includes(neg.toLowerCase()))
+        })
+
+        return filteredResults
+
+    } catch (error) {
+        console.error('eBay Scraping failed:', error)
+        return []
+    } finally {
+        if (browser) {
+            await browser.close()
+        }
     }
-
-    // Filter negative keywords
-    const filteredResults = results.filter(item => {
-        if (!item) return false
-        const titleLower = item.title.toLowerCase()
-        return !negativeKeywords.some(neg => titleLower.includes(neg.toLowerCase()))
-    })
-
-    return filteredResults
-
-} catch (error) {
-    console.error('eBay Scraping failed:', error)
-    return []
-} finally {
-    if (browser) {
-        await browser.close()
-    }
-}
 }
 
 async function scrapeFacebook(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
