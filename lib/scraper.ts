@@ -43,6 +43,15 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         browser = await getBrowser()
         const page = await browser.newPage()
 
+        // Set a realistic User-Agent to avoid detection
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+
+        // Add extra headers
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        })
+
         // Construct search URL
         // _nkw = keywords
         // _sacat = 0 (all categories)
