@@ -71,7 +71,7 @@ async function saveAndNotify(hawk: Hawk, result: ScraperResult) {
 
     // Determine if it's a "STEAL" (Simple logic for now: 50% of max price? Or just notify)
     // For now, just notify
-    const message = `🦅 PartHawk Alert: ${result.title} found for $${result.price}. ${result.url}`
+    const message = `🦅 Trace Motorsports Alert: ${result.title} found for $${result.price}. ${result.url}`
 
     // Log notification (In real app, call Twilio here)
     await supabase.from('notifications').insert({

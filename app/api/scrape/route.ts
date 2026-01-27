@@ -112,7 +112,7 @@ export async function POST(request: Request) {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            content: `🦅 **PartHawk Alert**\nFound ${newItems.length} new items for **${freshHawk.keywords}**\n${freshHawk.vehicle_string ? `*Vehicle: ${freshHawk.vehicle_string}*\n` : ''}`,
+                            content: `🦅 **Trace Motorsports Alert**\nFound ${newItems.length} new items for **${freshHawk.keywords}**\n${freshHawk.vehicle_string ? `*Vehicle: ${freshHawk.vehicle_string}*\n` : ''}`,
                             embeds: newItems.slice(0, 10).map((r: any) => ({
                                 title: r.title,
                                 url: r.url,

@@ -1,11 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
-import { scrape, getBrowser } from '@/lib/scraper'
+import { scrape } from '@/lib/scraper'
 import { sendNotificationEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
-import type { Browser } from 'puppeteer-core'
 
 export const runtime = 'nodejs'
-export const maxDuration = 300
+export const maxDuration = 60 // Reduced - no browser = much faster
 
 // ============================================================================
 // TYPES
@@ -14,7 +13,8 @@ interface Hawk {
     id: string
     user_id: string
     keywords: string
-    source: 'ebay' | 'facebook' | 'craigslist'
+    source: 'ebay' | 'facebook' | 'craigslist' | 'offerup' | 'car-part'
+    region?: string
     max_price?: number
     negative_keywords?: string
     vehicle_string?: string
@@ -27,7 +27,7 @@ interface Hawk {
 
 interface ScanResult {
     id: string
-    status: 'scanned' | 'skipped' | 'failed'
+    status: 'scanned' | 'skipped' | 'failed' | 'unsupported'
     items?: number
     reason?: string
     error?: string
@@ -41,7 +41,6 @@ export async function GET(request: Request) {
     const force = searchParams.get('force') === 'true'
 
     const results: ScanResult[] = []
-    let browser: Browser | undefined
 
     try {
         console.log('[Cron] Starting Scan Cycle...')
@@ -64,29 +63,28 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Database error' }, { status: 500 })
         }
 
-        console.log(`[Cron] Found ${hawks.length} active hawks. Checking schedules...`)
+        console.log(`[Cron] Found ${hawks.length} active hawks`)
 
         if (hawks.length === 0) {
             return NextResponse.json({ success: true, scanned: 0, skipped: 0 })
         }
 
-        // Pre-launch browser ONCE for all hawks
-        try {
-            browser = await getBrowser()
-            console.log('[Cron] Browser launched successfully')
-        } catch (e: any) {
-            console.error('[Cron] Failed to launch browser:', e.message)
-            return NextResponse.json({
-                success: false,
-                error: 'Browser launch failed'
-            }, { status: 200 })
-        }
-
         const now = new Date()
 
-        // Process hawks sequentially (memory constraints)
+        // Process hawks sequentially
         for (const hawk of hawks as Hawk[]) {
             try {
+                // Check if source is supported
+                if (hawk.source === 'facebook') {
+                    console.log(`[Cron] Skipping ${hawk.id}: Facebook not supported`)
+                    results.push({
+                        id: hawk.id,
+                        status: 'unsupported',
+                        reason: 'Facebook Marketplace scraping is not available'
+                    })
+                    continue
+                }
+
                 // Check if it's time to scan
                 const lastScanned = hawk.last_scanned_at
                     ? new Date(hawk.last_scanned_at)
@@ -114,7 +112,7 @@ export async function GET(request: Request) {
                     ? hawk.negative_keywords.split(',').map(s => s.trim()).filter(Boolean)
                     : []
 
-                // Scrape
+                // Scrape - NO BROWSER NEEDED! 🎉
                 const scrapeResults = await scrape(
                     hawk.source,
                     hawk.keywords,
@@ -122,7 +120,8 @@ export async function GET(request: Request) {
                     negativeKeywords,
                     hawk.vehicle_string,
                     hawk.exact_match,
-                    browser
+                    undefined, // No browser
+                    hawk.region
                 )
 
                 // Get existing listings to filter duplicates
@@ -131,14 +130,34 @@ export async function GET(request: Request) {
                     .select('url')
                     .eq('hawk_id', hawk.id)
 
-                const existingIds = new Set(
-                    existingListings?.map(x => {
-                        const match = x.url.match(/\/itm\/(\d+)/)
-                        return match ? match[1] : x.url
-                    }) || []
-                )
+                // Build set of existing IDs (extract from URLs)
+                const existingIds = new Set<string>()
+                existingListings?.forEach(x => {
+                    // Handle eBay URLs
+                    const ebayMatch = x.url.match(/\/itm\/(\d+)/)
+                    if (ebayMatch) {
+                        existingIds.add(`ebay-${ebayMatch[1]}`)
+                        existingIds.add(ebayMatch[1]) // Also check without prefix
+                    }
+                    // Handle Craigslist URLs
+                    const clMatch = x.url.match(/\/(\d+)\.html/)
+                    if (clMatch) {
+                        existingIds.add(clMatch[1])
+                    }
+                    // Handle OfferUp IDs
+                    const ouMatch = x.url.match(/\/item\/detail\/(\d+)/)
+                    if (ouMatch) {
+                        existingIds.add(`ou-${ouMatch[1]}`)
+                        existingIds.add(ouMatch[1])
+                    }
+                    // Add full URL as fallback
+                    existingIds.add(x.url)
+                })
 
-                const newItems = scrapeResults.filter(r => !existingIds.has(r.listingId))
+                const newItems = scrapeResults.filter(r =>
+                    !existingIds.has(r.listingId) &&
+                    !existingIds.has(r.url)
+                )
 
                 console.log(`[Cron] ${hawk.id}: ${scrapeResults.length} total, ${newItems.length} new`)
 
@@ -195,17 +214,20 @@ export async function GET(request: Request) {
             }
         }
 
+        // Summary
         const scanned = results.filter(r => r.status === 'scanned').length
         const skipped = results.filter(r => r.status === 'skipped').length
         const failed = results.filter(r => r.status === 'failed').length
+        const unsupported = results.filter(r => r.status === 'unsupported').length
 
-        console.log(`[Cron] Complete: ${scanned} scanned, ${skipped} skipped, ${failed} failed`)
+        console.log(`[Cron] Complete: ${scanned} scanned, ${skipped} skipped, ${failed} failed, ${unsupported} unsupported`)
 
         return NextResponse.json({
             success: true,
             scanned,
             skipped,
             failed,
+            unsupported,
             results
         })
 
@@ -216,17 +238,6 @@ export async function GET(request: Request) {
             error: criticalError.message || 'Unknown error',
             results
         }, { status: 200 }) // Return 200 so cron services don't disable
-
-    } finally {
-        // ALWAYS close browser
-        if (browser) {
-            try {
-                await browser.close()
-                console.log('[Cron] Browser closed')
-            } catch (e) {
-                console.error('[Cron] Browser close error:', e)
-            }
-        }
     }
 }
 
@@ -238,13 +249,13 @@ async function sendWebhook(hawk: Hawk, newItems: any[]) {
 
     try {
         const payload = {
-            content: `🦅 **PartHawk Alert**\nFound ${newItems.length} new item${newItems.length > 1 ? 's' : ''} for **${hawk.keywords}**${hawk.vehicle_string ? `\n*Vehicle: ${hawk.vehicle_string}*` : ''}`,
+            content: `🦅 **Trace Motorsports Alert**\nFound ${newItems.length} new item${newItems.length > 1 ? 's' : ''} for **${hawk.keywords}**${hawk.vehicle_string ? `\n*Vehicle: ${hawk.vehicle_string}*` : ''}`,
             embeds: newItems.slice(0, 10).map(r => ({
                 title: r.title?.substring(0, 256) || 'Item',
                 url: r.url,
                 description: `💰 $${r.price}\n📍 ${hawk.source}`,
                 thumbnail: r.imageUrl ? { url: r.imageUrl } : undefined,
-                color: 0xDE4A3C // PartHawk red
+                color: 0xDE4A3C // Trace Motorsports red
             }))
         }
 

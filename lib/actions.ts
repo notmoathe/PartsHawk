@@ -22,6 +22,7 @@ export async function createHawk(formData: FormData) {
         const vehicleString = formData.get('vehicle_string') as string
         const webhookUrl = formData.get('webhook_url') as string
         const exactMatch = formData.get('exact_match') === 'on'
+        const region = (formData.get('region') as string) || 'all'
 
         // Validate Interval based on Tier
         const tier = getUserTier(user.email)
@@ -41,7 +42,8 @@ export async function createHawk(formData: FormData) {
             scan_interval: scanInterval,
             vehicle_string: vehicleString || null,
             webhook_url: webhookUrl || null,
-            exact_match: exactMatch
+            exact_match: exactMatch,
+            region: region
         }).select().single()
 
         if (error) {

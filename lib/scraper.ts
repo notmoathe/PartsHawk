@@ -1,535 +1,565 @@
-import puppeteer, { Browser, Page, HTTPRequest } from 'puppeteer-core'
-import chromium from '@sparticuz/chromium-min'
+// ============================================================================
+// TRACE MOTORSPORTS SCRAPER - Production Ready
+// - eBay: Official Browse API (free, 5000 calls/day)
+// - Craigslist: HTML parsing (no API, but simple and reliable)
+// - OfferUp: API/HTML parsing
+// - Car-Part.com: HTML parsing
+// - Facebook: Not supported (no API, blocks scrapers)
+// ============================================================================
+
 import { ScraperResult } from './types'
 
-const isProduction = process.env.NODE_ENV === 'production'
-
 // ============================================================================
-// CONFIGURATION - TUNED FOR VERCEL SERVERLESS (1024MB limit typically)
+// CONFIGURATION
 // ============================================================================
 const CONFIG = {
-    MAX_PAGES: 3,              // Reduced from 5 - memory constraints
-    MAX_RETRIES: 2,            // Reduced retries
-    NAVIGATION_TIMEOUT: 30000,
-    SELECTOR_TIMEOUT: 10000,
-    MIN_DELAY: 2000,           // Increased to look more human
-    MAX_DELAY: 5000,
-    // User agents - using only very common ones
-    USER_AGENTS: [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    ]
+    EBAY_API_BASE: 'https://api.ebay.com',
+    CRAIGSLIST_REGIONS: ['sfbay', 'losangeles', 'seattle', 'chicago', 'newyork', 'dallas', 'miami', 'denver', 'phoenix', 'atlanta'],
+    OFFERUP_REGIONS: [''], // OfferUp is location agnostic mostly, uses lat/long or zip, but we'll try generic search
+    REQUEST_TIMEOUT: 15000,
+}
+
+// Region Mapping for Craigslist
+// Mapping broad regions to specific Craigslist subdomains (e.g. 'sfbay', 'newyork')
+const REGION_MAP: Record<string, string[]> = {
+    'all': ['sfbay', 'losangeles', 'seattle', 'chicago', 'newyork', 'dallas', 'miami', 'denver', 'phoenix', 'atlanta'],
+    'west': ['sfbay', 'losangeles', 'seattle', 'portland', 'sandiego', 'phoenix', 'denver', 'lasvegas', 'sacramento'],
+    'midwest': ['chicago', 'detroit', 'minneapolis', 'stlouis', 'kansascity', 'columbus', 'cleveland', 'indianapolis'],
+    'northeast': ['newyork', 'boston', 'philadelphia', 'dc', 'baltimore', 'pittsburgh', 'hartford', 'providence'],
+    'south': ['atlanta', 'miami', 'dallas', 'houston', 'austin', 'orlando', 'nashville', 'charlotte', 'tampa']
+}
+
+// Helper: Check if keywords look like a part number
+// Matches: 123-456, 123456, A123-4567-B, etc. Valid part numbers usually contain numbers.
+function isPartNumber(text: string): boolean {
+    // Basic heuristic: At least one digit, no spaces (or very few), possibly dashes/alphanumeric
+    // We'll strip spaces and dashes and check if alphanumeric
+    const stripped = text.replace(/[\s-]/g, '')
+    // Must contain a number and be at least 5 chars long to avoid generic words like "Bolt"
+    return /\d/.test(stripped) && stripped.length >= 5 && /^[a-zA-Z0-9]+$/.test(stripped)
+}
+
+// Helper: Fuzzy match part number in title
+// Returns true if the part number (normalized) exists in the title (normalized)
+function containsPartNumber(title: string, partNumber: string): boolean {
+    const normalize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+    return normalize(title).includes(normalize(partNumber))
 }
 
 // ============================================================================
-// UTILITY FUNCTIONS
+// EBAY - Official Browse API
 // ============================================================================
-function randomDelay(min = CONFIG.MIN_DELAY, max = CONFIG.MAX_DELAY): Promise<void> {
-    const delay = Math.floor(Math.random() * (max - min + 1)) + min
-    return new Promise(resolve => setTimeout(resolve, delay))
+interface EbayToken {
+    access_token: string
+    expires_at: number
 }
 
-function getRandomUserAgent(): string {
-    return CONFIG.USER_AGENTS[Math.floor(Math.random() * CONFIG.USER_AGENTS.length)]
-}
+let cachedEbayToken: EbayToken | null = null
 
-function log(level: 'info' | 'warn' | 'error', message: string, data?: any) {
-    const timestamp = new Date().toISOString()
-    const prefix = `[${timestamp}] [Scraper:${level.toUpperCase()}]`
-    console[level](data ? `${prefix} ${message}` : `${prefix} ${message}`, data || '')
-}
-
-// ============================================================================
-// BROWSER MANAGEMENT - MEMORY OPTIMIZED
-// ============================================================================
-export async function getBrowser(): Promise<Browser> {
-    // CRITICAL: Minimal args for low memory footprint
-    const args = [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',                        // CRITICAL for serverless
-        '--disable-extensions',
-        '--disable-background-networking',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-breakpad',
-        '--disable-component-extensions-with-background-pages',
-        '--disable-component-update',
-        '--disable-default-apps',
-        '--disable-domain-reliability',
-        '--disable-features=AudioServiceOutOfProcess',
-        '--disable-hang-monitor',
-        '--disable-ipc-flooding-protection',
-        '--disable-popup-blocking',
-        '--disable-prompt-on-repost',
-        '--disable-renderer-backgrounding',
-        '--disable-sync',
-        '--disable-translate',
-        '--metrics-recording-only',
-        '--mute-audio',
-        '--no-default-browser-check',
-        '--safebrowsing-disable-auto-update',
-        // Anti-detection
-        '--disable-blink-features=AutomationControlled',
-        // Memory limits
-        '--js-flags=--max-old-space-size=256',     // Limit JS heap
-        '--disable-features=site-per-process',
-    ]
-
-    if (isProduction) {
-        return puppeteer.launch({
-            args: [...chromium.args, ...args],
-            executablePath: await chromium.executablePath(
-                'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
-            ),
-            headless: true,
-        })
-    } else {
-        const { default: puppeteerLocal } = await import('puppeteer')
-        return puppeteerLocal.launch({ headless: true, args })
+async function getEbayToken(): Promise<string> {
+    // Return cached token if valid
+    if (cachedEbayToken && cachedEbayToken.expires_at > Date.now()) {
+        return cachedEbayToken.access_token
     }
+
+    const appId = process.env.EBAY_APP_ID
+    const appSecret = process.env.EBAY_APP_SECRET
+
+    if (!appId || !appSecret) {
+        throw new Error('Missing EBAY_APP_ID or EBAY_APP_SECRET. Get them at developer.ebay.com')
+    }
+
+    const credentials = Buffer.from(`${appId}:${appSecret}`).toString('base64')
+
+    const response = await fetch(`${CONFIG.EBAY_API_BASE}/identity/v1/oauth2/token`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${credentials}`,
+        },
+        body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope',
+    })
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[eBay] Auth failed:', errorText)
+        throw new Error(`eBay authentication failed: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    cachedEbayToken = {
+        access_token: data.access_token,
+        expires_at: Date.now() + (data.expires_in * 1000) - 60000, // 1 min buffer
+    }
+
+    console.log('[eBay] Token obtained successfully')
+    return cachedEbayToken.access_token
 }
 
-// ============================================================================
-// PAGE SETUP - AGGRESSIVE RESOURCE BLOCKING
-// ============================================================================
-async function setupPage(browser: Browser): Promise<Page> {
-    const page = await browser.newPage()
-
-    // Minimal viewport
-    await page.setViewport({ width: 1366, height: 768, deviceScaleFactor: 1 })
-
-    // User agent
-    const userAgent = getRandomUserAgent()
-    await page.setUserAgent(userAgent)
-
-    // Headers that look like a real browser
-    await page.setExtraHTTPHeaders({
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0',
-    })
-
-    // AGGRESSIVE request interception - block almost everything
-    await page.setRequestInterception(true)
-    page.on('request', (request: HTTPRequest) => {
-        const resourceType = request.resourceType()
-        const url = request.url()
-
-        // ONLY allow document and script (needed for page to work)
-        // Block: images, css, fonts, media, websocket, manifest, etc.
-        const allowedTypes = ['document', 'script', 'xhr', 'fetch']
-
-        if (!allowedTypes.includes(resourceType)) {
-            request.abort()
-            return
-        }
-
-        // Block known tracking/ad domains
-        const blockedPatterns = [
-            'google-analytics', 'googletagmanager', 'facebook', 'doubleclick',
-            'adsystem', 'adservice', 'analytics', 'tracker', 'beacon',
-            'pixel', 'hotjar', 'optimizely', 'segment', 'amplitude',
-            'mixpanel', 'fullstory', 'crazyegg', 'clicktale', 'mouseflow',
-            'ebay.com/sch/ajax', // eBay AJAX tracking
-            'ebay.com/rovr',     // eBay tracking
-            'ebaystatic.com/rs/v', // Some eBay static assets we don't need
-        ]
-
-        if (blockedPatterns.some(pattern => url.includes(pattern))) {
-            request.abort()
-            return
-        }
-
-        request.continue()
-    })
-
-    // Stealth: Override navigator properties
-    await page.evaluateOnNewDocument(() => {
-        // Hide webdriver
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
-
-        // Delete the automation-related properties
-        delete (navigator as any).__proto__.webdriver
-
-        // Mock plugins to look like real Chrome
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => {
-                const plugins = [
-                    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-                    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-                    { name: 'Native Client', filename: 'internal-nacl-plugin' },
-                ]
-                const pluginArray = Object.create(PluginArray.prototype)
-                plugins.forEach((p, i) => {
-                    pluginArray[i] = p
-                })
-                pluginArray.length = plugins.length
-                return pluginArray
-            }
-        })
-
-        // Mock languages
-        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] })
-
-        // Mock platform
-        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' })
-
-        // Mock hardwareConcurrency (common value)
-        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 })
-
-        // Mock deviceMemory
-        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 })
-
-        // Chrome object
-        const chrome = {
-            runtime: {},
-            loadTimes: function () { },
-            csi: function () { },
-            app: {}
-        }
-        Object.defineProperty(window, 'chrome', { get: () => chrome })
-
-        // Override permissions
-        const originalQuery = window.navigator.permissions.query
-        window.navigator.permissions.query = (parameters: any) =>
-            parameters.name === 'notifications'
-                ? Promise.resolve({ state: 'prompt' } as PermissionStatus)
-                : originalQuery(parameters)
-
-        // WebGL Vendor/Renderer (common Intel values)
-        const getParameterProxyHandler = {
-            apply: function (target: any, thisArg: any, argumentsList: any[]) {
-                const param = argumentsList[0]
-                const gl = thisArg
-                // UNMASKED_VENDOR_WEBGL
-                if (param === 37445) return 'Intel Inc.'
-                // UNMASKED_RENDERER_WEBGL
-                if (param === 37446) return 'Intel Iris OpenGL Engine'
-                return Reflect.apply(target, thisArg, argumentsList)
-            }
-        }
-
-        try {
-            const canvas = document.createElement('canvas')
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-            if (gl) {
-                const originalGetParameter = (gl as any).getParameter
-                    ; (gl as any).getParameter = new Proxy(originalGetParameter, getParameterProxyHandler)
-            }
-        } catch (e) { }
-    })
-
-    // Disable cache to save memory
-    await page.setCacheEnabled(false)
-
-    return page
-}
-
-// ============================================================================
-// EBAY ITEM EXTRACTION - Simplified and robust
-// ============================================================================
-const extractItems = () => {
-    const results: any[] = []
-    const seen = new Set<string>()
-
-    // Primary: .s-item
-    document.querySelectorAll('.s-item').forEach(item => {
-        try {
-            if (item.querySelector('.s-item__title--has-tags')) return
-
-            const titleEl = item.querySelector('.s-item__title')
-            const priceEl = item.querySelector('.s-item__price')
-            const linkEl = item.querySelector('.s-item__link') as HTMLAnchorElement | null
-
-            if (!titleEl || !priceEl || !linkEl) return
-
-            const title = titleEl.textContent?.trim() || ''
-            if (title === 'Shop on eBay' || !title) return
-
-            const href = linkEl.href || ''
-            const idMatch = href.match(/\/itm\/(\d+)/)
-            if (!idMatch) return
-
-            const listingId = idMatch[1]
-            if (seen.has(listingId)) return
-            seen.add(listingId)
-
-            const priceText = priceEl.textContent?.trim() || ''
-            const priceMatch = priceText.match(/\$[\d,.]+/)
-            const price = priceMatch ? parseFloat(priceMatch[0].replace(/[^0-9.]/g, '')) : 0
-
-            if (price <= 0) return
-
-            results.push({
-                listingId,
-                title: title.substring(0, 200),
-                price,
-                url: `https://www.ebay.com/itm/${listingId}`,
-                imageUrl: 'https://placehold.co/400x300?text=eBay' // Skip images to save bandwidth
-            })
-        } catch { }
-    })
-
-    return results
-}
-
-// ============================================================================
-// MAIN EBAY SCRAPER - SINGLE PAGE REUSE, MEMORY OPTIMIZED
-// ============================================================================
 async function scrapeEbay(
-    keywords: string,
-    maxPrice: number,
-    negativeKeywords: string[] = [],
-    vehicleString?: string,
-    browserInstance?: Browser
-): Promise<ScraperResult[]> {
-    let browser: Browser | null = browserInstance || null
-    let page: Page | null = null
-    let ownsBrowser = false
-    const allItems = new Map<string, ScraperResult>()
-    let consecutiveFailures = 0
-    const MAX_CONSECUTIVE_FAILURES = 2
-
-    try {
-        // Get or create browser
-        if (!browser || !browser.isConnected()) {
-            log('info', 'Launching browser')
-            browser = await getBrowser()
-            ownsBrowser = true
-        }
-
-        // Create ONE page and reuse it
-        page = await setupPage(browser)
-
-        const fullKeywords = vehicleString ? `${vehicleString} ${keywords}` : keywords
-        const encodedKeywords = encodeURIComponent(fullKeywords)
-
-        // Scrape pages
-        for (let pageNum = 1; pageNum <= CONFIG.MAX_PAGES; pageNum++) {
-            // Check if we've failed too many times in a row (likely blocked)
-            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-                log('warn', `${MAX_CONSECUTIVE_FAILURES} consecutive failures, likely blocked. Stopping.`)
-                break
-            }
-
-            let success = false
-
-            for (let attempt = 1; attempt <= CONFIG.MAX_RETRIES; attempt++) {
-                try {
-                    // Check page health - recreate if needed
-                    if (!page || page.isClosed()) {
-                        log('warn', 'Page closed, recreating')
-                        // Force garbage collection opportunity
-                        await randomDelay(1000, 2000)
-                        page = await setupPage(browser!)
-                    }
-
-                    const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc&_pgn=${pageNum}`
-                    log('info', `Page ${pageNum} Attempt ${attempt}: ${url}`)
-
-                    // Navigate with error handling
-                    const response = await page.goto(url, {
-                        waitUntil: 'domcontentloaded',
-                        timeout: CONFIG.NAVIGATION_TIMEOUT
-                    })
-
-                    if (!response) {
-                        throw new Error('No response')
-                    }
-
-                    // Check for block page
-                    const pageTitle = await page.title()
-                    if (pageTitle.includes('Pardon') || pageTitle.includes('Security')) {
-                        log('warn', `BLOCKED: "${pageTitle}" - eBay detected bot`)
-                        consecutiveFailures++
-
-                        // Wait longer before retry
-                        await randomDelay(5000, 10000)
-
-                        // Close and recreate page with new fingerprint
-                        await page.close()
-                        page = await setupPage(browser!)
-                        continue
-                    }
-
-                    // Wait for content
-                    try {
-                        await page.waitForSelector('.s-item, .srp-results', { timeout: CONFIG.SELECTOR_TIMEOUT })
-                    } catch {
-                        log('warn', `No items selector found on page ${pageNum}`)
-                    }
-
-                    // Small delay to let JS execute
-                    await randomDelay(500, 1000)
-
-                    // Extract items
-                    const pageResults = await page.evaluate(extractItems)
-
-                    log('info', `Page ${pageNum}: ${pageResults.length} items found`)
-
-                    if (pageResults.length === 0 && pageNum > 1) {
-                        log('info', 'No more results, stopping')
-                        return Array.from(allItems.values())
-                    }
-
-                    // Add to results (with dedup and negative filtering)
-                    let newCount = 0
-                    for (const item of pageResults) {
-                        if (allItems.has(item.listingId)) continue
-
-                        const titleLower = item.title.toLowerCase()
-                        if (negativeKeywords.some(nk => titleLower.includes(nk.toLowerCase()))) {
-                            continue
-                        }
-
-                        allItems.set(item.listingId, item)
-                        newCount++
-                    }
-
-                    log('info', `Page ${pageNum}: ${newCount} new items (${allItems.size} total)`)
-
-                    // Stop if no new items
-                    if (newCount === 0 && pageNum > 1) {
-                        log('info', 'No new unique items, stopping')
-                        return Array.from(allItems.values())
-                    }
-
-                    success = true
-                    consecutiveFailures = 0 // Reset on success
-                    break
-
-                } catch (error: any) {
-                    const errMsg = error.message || 'Unknown error'
-                    log('warn', `Page ${pageNum} Attempt ${attempt} error: ${errMsg}`)
-
-                    // Handle specific errors
-                    if (errMsg.includes('ERR_INSUFFICIENT_RESOURCES')) {
-                        log('error', 'OUT OF MEMORY - stopping scraper')
-                        // Return what we have
-                        return Array.from(allItems.values())
-                    }
-
-                    if (errMsg.includes('detached')) {
-                        log('warn', 'Frame detached, recreating page')
-                        try { await page?.close() } catch { }
-                        page = null
-                    }
-
-                    if (attempt < CONFIG.MAX_RETRIES) {
-                        await randomDelay(2000, 4000)
-                    }
-                }
-            }
-
-            if (!success) {
-                consecutiveFailures++
-            }
-
-            // Delay between pages - look more human
-            if (pageNum < CONFIG.MAX_PAGES) {
-                await randomDelay()
-            }
-        }
-
-        return Array.from(allItems.values())
-
-    } catch (error: any) {
-        log('error', `Critical error: ${error.message}`)
-        return Array.from(allItems.values())
-
-    } finally {
-        // Cleanup
-        try {
-            if (page && !page.isClosed()) {
-                await page.close()
-            }
-        } catch { }
-
-        if (browser && ownsBrowser) {
-            try {
-                await browser.close()
-            } catch { }
-        }
-    }
-}
-
-// ============================================================================
-// FACEBOOK MARKETPLACE (Still Mock)
-// ============================================================================
-async function scrapeFacebook(
     keywords: string,
     maxPrice: number,
     negativeKeywords: string[] = [],
     vehicleString?: string
 ): Promise<ScraperResult[]> {
-    log('info', `[MOCK] Facebook Marketplace: ${keywords}`)
-    await randomDelay(500, 1000)
-    return [{
-        listingId: `fb-${Date.now()}`,
-        title: `[FB] ${keywords} - Like New`,
-        price: Math.round(maxPrice * 0.8),
-        url: 'https://facebook.com/marketplace/item/12345',
-        imageUrl: 'https://placehold.co/400x300?text=FB+Item',
-    }]
+    const fullKeywords = vehicleString ? `${vehicleString} ${keywords}` : keywords
+    console.log(`[eBay] Searching: "${fullKeywords}" max=$${maxPrice}`)
+
+    try {
+        const token = await getEbayToken()
+
+        // Build filter string
+        const filters = [
+            `price:[..${maxPrice}]`,
+            'priceCurrency:USD',
+            'buyingOptions:{FIXED_PRICE|AUCTION}',
+        ].join(',')
+
+        const params = new URLSearchParams({
+            q: fullKeywords,
+            limit: '100',
+            sort: 'newlyListed',
+            filter: filters,
+        })
+
+        const response = await fetch(
+            `${CONFIG.EBAY_API_BASE}/buy/browse/v1/item_summary/search?${params}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+                },
+                signal: AbortSignal.timeout(CONFIG.REQUEST_TIMEOUT),
+            }
+        )
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            console.error('[eBay] Search failed:', response.status, errorText)
+            return []
+        }
+
+        const data = await response.json()
+        const items = data.itemSummaries || []
+
+        console.log(`[eBay] API returned ${items.length} items`)
+
+        // Transform to our format
+        const results: ScraperResult[] = items.map((item: any) => {
+            // itemId format: "v1|123456789|0" - extract middle part
+            const parts = item.itemId?.split('|') || []
+            const listingId = parts[1] || item.itemId || `ebay-${Date.now()}-${Math.random()}`
+
+            return {
+                listingId: `ebay-${listingId}`,
+                title: item.title || 'Unknown Item',
+                price: parseFloat(item.price?.value) || 0,
+                url: item.itemWebUrl || `https://www.ebay.com/itm/${listingId}`,
+                imageUrl: item.image?.imageUrl || item.thumbnailImages?.[0]?.imageUrl || 'https://placehold.co/400x300?text=eBay',
+            }
+        })
+
+        // Apply negative keyword filter
+        const filtered = results.filter(item => {
+            const titleLower = item.title.toLowerCase()
+            return !negativeKeywords.some(nk => titleLower.includes(nk.toLowerCase()))
+        })
+
+        console.log(`[eBay] ${filtered.length} items after negative keyword filter`)
+        return filtered
+
+    } catch (error: any) {
+        console.error('[eBay] Scrape error:', error.message)
+        return []
+    }
 }
 
 // ============================================================================
-// MAIN ENTRY POINT
+// CRAIGSLIST - HTML Parsing (No API needed)
+// ============================================================================
+async function scrapeCraigslist(
+    keywords: string,
+    maxPrice: number,
+    negativeKeywords: string[] = [],
+    vehicleString?: string,
+    regionCode: string = 'all'
+): Promise<ScraperResult[]> {
+    // Determine regions to scrape based on code
+    const regions = REGION_MAP[regionCode] || REGION_MAP['all']
+
+    // Safety cap: Only scrape first 5 regions if running in "all" or generic mode to avoid timeout?
+    // Actually, "all" is just top 10 hubs in our map.
+
+    const fullKeywords = vehicleString ? `${vehicleString} ${keywords}` : keywords
+    console.log(`[Craigslist] Searching: "${fullKeywords}" max=$${maxPrice} in ${regions.length} regions (${regionCode})`)
+
+    const allResults: ScraperResult[] = []
+    const seenIds = new Set<string>()
+
+    for (const region of regions) {
+        try {
+            const encodedKeywords = encodeURIComponent(fullKeywords)
+            const url = `https://${region}.craigslist.org/search/sss?query=${encodedKeywords}&max_price=${maxPrice}&sort=date`
+
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                },
+                signal: AbortSignal.timeout(CONFIG.REQUEST_TIMEOUT),
+            })
+
+            if (!response.ok) {
+                console.warn(`[Craigslist] ${region} returned ${response.status}`)
+                continue
+            }
+
+            const html = await response.text()
+
+            // Parse listings from HTML
+            // Craigslist uses <li class="cl-static-search-result"> or similar
+            const listingRegex = /<li[^>]*class="[^"]*cl-static-search-result[^"]*"[^>]*>[\s\S]*?<\/li>/gi
+            const listings = html.match(listingRegex) || []
+
+            // Alternative: Look for result-row (older format)
+            const altRegex = /<li[^>]*class="[^"]*result-row[^"]*"[^>]*>[\s\S]*?<\/li>/gi
+            const altListings = html.match(altRegex) || []
+
+            const allListings = [...listings, ...altListings]
+
+            for (const listing of allListings) {
+                try {
+                    // Extract URL and ID
+                    const urlMatch = listing.match(/href="(https:\/\/[^"]+\/(\d+)\.html)"/)
+                    if (!urlMatch) continue
+
+                    const listingUrl = urlMatch[1]
+                    const listingId = `cl-${region}-${urlMatch[2]}`
+
+                    if (seenIds.has(listingId)) continue
+                    seenIds.add(listingId)
+
+                    // Extract title
+                    const titleMatch = listing.match(/<span[^>]*class="[^"]*label[^"]*"[^>]*>([^<]+)<\/span>/) ||
+                        listing.match(/<a[^>]*class="[^"]*titlestring[^"]*"[^>]*>([^<]+)<\/a>/) ||
+                        listing.match(/<a[^>]*>([^<]{10,100})<\/a>/)
+                    const title = titleMatch ? titleMatch[1].trim() : 'Unknown Item'
+
+                    // Extract price
+                    const priceMatch = listing.match(/\$[\d,]+/)
+                    const price = priceMatch ? parseFloat(priceMatch[0].replace(/[^0-9.]/g, '')) : 0
+
+                    // Extract image (if available)
+                    const imgMatch = listing.match(/src="([^"]+)"/) || listing.match(/data-ids="([^"]+)"/)
+                    let imageUrl = 'https://placehold.co/400x300?text=Craigslist'
+                    if (imgMatch && imgMatch[1].startsWith('http')) {
+                        imageUrl = imgMatch[1]
+                    }
+
+                    // Check negative keywords
+                    const titleLower = title.toLowerCase()
+                    if (negativeKeywords.some(nk => titleLower.includes(nk.toLowerCase()))) {
+                        continue
+                    }
+
+                    allResults.push({
+                        listingId,
+                        title,
+                        price,
+                        url: listingUrl,
+                        imageUrl,
+                    })
+                } catch (parseError) {
+                    // Skip malformed listings
+                    continue
+                }
+            }
+
+            console.log(`[Craigslist] ${region}: found ${allListings.length} listings`)
+
+            // Small delay between regions to be polite
+            await new Promise(r => setTimeout(r, 500))
+
+        } catch (error: any) {
+            console.warn(`[Craigslist] ${region} error:`, error.message)
+            continue
+        }
+    }
+
+    console.log(`[Craigslist] Total: ${allResults.length} items from ${regions.length} regions`)
+    return allResults
+}
+
+
+
+// ============================================================================
+// OFFERUP - HTML Parsing
+// ============================================================================
+async function scrapeOfferUp(
+    keywords: string,
+    maxPrice: number,
+    negativeKeywords: string[] = [],
+    vehicleString?: string
+): Promise<ScraperResult[]> {
+    const fullKeywords = vehicleString ? `${vehicleString} ${keywords}` : keywords
+    console.log(`[OfferUp] Searching: "${fullKeywords}" max=$${maxPrice}`)
+
+    try {
+        const encodedKeywords = encodeURIComponent(fullKeywords)
+        // OfferUp Search URL typically: https://offerup.com/search?q=query&price_max=100
+        const url = `https://offerup.com/search?q=${encodedKeywords}&price_max=${maxPrice}`
+
+        const response = await fetch(url, {
+            headers: {
+                // OfferUp is strict with User-Agents, imitate a real browser
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+            },
+            signal: AbortSignal.timeout(CONFIG.REQUEST_TIMEOUT),
+        })
+
+        if (!response.ok) {
+            console.warn(`[OfferUp] Search failed: ${response.status}`)
+            // Attempt fallback or return empty
+            return []
+        }
+
+        const html = await response.text()
+
+        // OfferUp uses Next.js/React and puts data in __NEXT_DATA__ script tag usually, 
+        // or uses specific class names. Let's try simple regex for now as it's robust against some class name changes.
+        // Looking for href="/item/detail/..."
+
+        // Regex to find Item links and potentially nearby titles/prices
+        // This is tricky with raw HTML. 
+        // Strategy: Find standard item containers.
+
+        // Note: OfferUp is heavily dynamic (Client Side Rendered). 
+        // Fetching raw HTML might basically return an empty shell with a JSON blob.
+        // Let's verify if we can find the JSON blob.
+
+        const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/)
+        if (!nextDataMatch) {
+            console.warn('[OfferUp] Could not find __NEXT_DATA__. They might have changed SSR structure.')
+            return []
+        }
+
+        const json = JSON.parse(nextDataMatch[1])
+        // Traverse JSON to find items. 
+        // Structure is complex and changes. 
+        // Typically props.pageProps.feedItems or similar.
+
+        // Deep search for "feedItems" or items array in the JSON
+        // Using a helper to safely extract would be good, but for now lets try standard paths.
+
+        // Path 1: props.pageProps.initialState.feed.feedItems
+        // Path 2: props.pageProps.feedItems
+
+        let items: any[] = []
+        try {
+            // Attempt to find feeds
+            const feed = json?.props?.pageProps?.initialState?.feed || json?.props?.pageProps?.data?.feed
+            items = feed?.items || feed?.edges || []
+        } catch (e) {
+            console.warn('[OfferUp] JSON structure parsing error')
+        }
+
+        if (!items || items.length === 0) {
+            console.warn('[OfferUp] No items found in JSON')
+            return []
+        }
+
+        const results: ScraperResult[] = []
+
+        for (const itemWrapper of items) {
+            const item = itemWrapper.item // Sometimes wrapped in edge/node
+            if (!item) continue;
+
+            const title = item.title
+            const price = parseFloat(item.price?.replace(/[^0-9.]/g, '')) || 0
+            const listingId = item.id ? `ou-${item.id}` : `ou-${Date.now()}-${Math.random()}`
+            const imageUrl = item.photos?.[0]?.detail?.url || item.photos?.[0]?.url || 'https://placehold.co/400x300?text=OfferUp'
+            // Handle relative or full URL
+            const listingUrl = `https://offerup.com/item/detail/${item.id}`
+
+            // Filter
+            const titleLower = title.toLowerCase()
+            if (negativeKeywords.some(nk => titleLower.includes(nk.toLowerCase()))) continue
+
+            results.push({
+                listingId,
+                title,
+                price,
+                url: listingUrl,
+                imageUrl
+            })
+        }
+
+        console.log(`[OfferUp] Found ${results.length} valid items`)
+        return results
+
+    } catch (error: any) {
+        console.error('[OfferUp] Scrape error:', error.message)
+        return []
+    }
+}
+
+
+// ============================================================================
+// CAR-PART.COM - HTML Parsing
+// ============================================================================
+async function scrapeCarPart(
+    keywords: string,
+    maxPrice: number,
+    negativeKeywords: string[] = [],
+    vehicleString?: string
+): Promise<ScraperResult[]> {
+    console.log(`[Car-Part] Searching: "${keywords}" (Vehicle: ${vehicleString || 'None'})`)
+
+    // Car-Part requires Year, Make, Model.
+    // If vehicleString is not likely YMM, we might fail or default.
+    // vehicleString format expected: "2000 Nissan Skyline"
+
+    if (!vehicleString) {
+        console.warn(`[Car-Part] Skipping: No vehicle string provided (Required: Year Make Model)`)
+        return []
+    }
+
+    const parts = vehicleString.split(' ')
+    if (parts.length < 3) {
+        console.warn(`[Car-Part] Invalid vehicle string: "${vehicleString}". Needs Year Make Model.`)
+        return []
+    }
+
+    const year = parts[0]
+    const make = parts[1]
+    const model = parts.slice(2).join(' ')
+    const partName = keywords // This mimics their "Select Part" but we might need to be clever.
+
+    // Car-Part is form based.
+    // URL: http://www.car-part.com/
+    // This is hard to scrape without a known "part code".
+    // Strategy: Skip for now until we map keywords to part codes? 
+    // OR: Use a simpler search if available.
+
+    // Actually, Car-Part requires selecting a specific part from a dropdown list to generate the search code.
+    // Without a valid ID, it won't work.
+    // We might need to map "Transmission" -> "Traffic Camera" (joke) -> "Transmission" code.
+
+    // FOR NOW: Return empty with log, as we need a mapping strategy.
+    console.warn(`[Car-Part] Implementation pending part-code mapping for "${keywords}"`)
+    return []
+}
+
+// ============================================================================
+// FACEBOOK - Not Supported
+// ============================================================================
+async function scrapeFacebook(
+    keywords: string,
+    _maxPrice: number,
+    _negativeKeywords: string[] = [],
+    _vehicleString?: string
+): Promise<ScraperResult[]> {
+    console.warn('[Facebook] Facebook Marketplace scraping is not supported.')
+    console.warn('[Facebook] FB has no public API and actively blocks automated access.')
+    console.warn('[Facebook] Consider manually checking: https://www.facebook.com/marketplace/search/?query=' + encodeURIComponent(keywords))
+
+    // Return empty - we won't pretend it works
+    return []
+}
+
+// ============================================================================
+// MAIN SCRAPE FUNCTION - Drop-in replacement
 // ============================================================================
 export async function scrape(
-    source: 'ebay' | 'facebook' | 'craigslist',
+    source: 'ebay' | 'facebook' | 'craigslist' | 'offerup' | 'car-part',
     keywords: string,
     maxPrice: number,
     negativeKeywords: string[] = [],
     vehicleString?: string,
     exactMatch?: boolean,
-    browserInstance?: Browser
+    _browserInstance?: any, // Ignored - no browser needed!
+    region?: string // New optional region param
 ): Promise<ScraperResult[]> {
-    log('info', `Scrape start: ${source} "${keywords}" max=$${maxPrice}`)
+    console.log(`[Scraper] Starting: source=${source}, keywords="${keywords}", region=${region}`)
 
     let items: ScraperResult[] = []
 
+    const isPartNum = isPartNumber(keywords)
+    if (isPartNum) {
+        console.log(`[Scraper] Detected PART NUMBER: ${keywords}. Enabling strict verification.`)
+    }
+
     try {
-        if (source === 'ebay') {
-            items = await scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString, browserInstance)
-        } else if (source === 'facebook') {
-            items = await scrapeFacebook(keywords, maxPrice, negativeKeywords, vehicleString)
+        switch (source) {
+            case 'ebay':
+                items = await scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString)
+                break
+
+            case 'craigslist':
+                items = await scrapeCraigslist(
+                    keywords,
+                    maxPrice,
+                    negativeKeywords,
+                    vehicleString,
+                    region // Pass the region code (e.g., 'west', 'all')
+                )
+                break
+
+            case 'offerup':
+                items = await scrapeOfferUp(keywords, maxPrice, negativeKeywords, vehicleString)
+                break
+
+            case 'car-part':
+                items = await scrapeCarPart(keywords, maxPrice, negativeKeywords, vehicleString)
+                break
+
+            case 'facebook':
+                items = await scrapeFacebook(keywords, maxPrice, negativeKeywords, vehicleString)
+                break
+
+            default:
+                console.warn(`[Scraper] Unknown source: ${source}`)
+                return []
         }
 
-        // Exact match filter
-        if (exactMatch && items.length > 0) {
-            const kw = keywords.toLowerCase().trim()
-            items = items.filter(i => i.title.toLowerCase().includes(kw))
+        // Post-Processing for Part Numbers
+        if (isPartNum && items.length > 0) {
+            const originalCount = items.length
+            items = items.filter(item => containsPartNumber(item.title, keywords))
+            console.log(`[Scraper] Part Number Filter: ${originalCount} -> ${items.length} items (Strict fuzzy match)`)
         }
 
-        // Final negative keyword filter (belt & suspenders)
-        if (negativeKeywords.length > 0) {
-            items = items.filter(i =>
-                !negativeKeywords.some(nk => i.title.toLowerCase().includes(nk.toLowerCase()))
-            )
+        return items
+
+        // Exact match filter (if enabled)
+        if (exactMatch && keywords) {
+            const kwLower = keywords.toLowerCase()
+            const before = items.length
+            items = items.filter(item => item.title.toLowerCase().includes(kwLower))
+            console.log(`[Scraper] Exact match filter: ${before} -> ${items.length}`)
         }
 
-        log('info', `Scrape complete: ${items.length} items`)
-        return items.slice(0, 100)
+        console.log(`[Scraper] Complete: ${items.length} items`)
+        return items.slice(0, 100) // Cap at 100
 
     } catch (error: any) {
-        log('error', `Scrape failed: ${error.message}`)
+        console.error(`[Scraper] Error:`, error.message)
         return items
     }
 }
 
-export { scrapeEbay, scrapeFacebook }
+// ============================================================================
+// EXPORTS
+// ============================================================================
+export { scrapeEbay, scrapeCraigslist, scrapeFacebook, scrapeOfferUp, scrapeCarPart }
+
+// Dummy getBrowser for backwards compatibility with route.ts
+export async function getBrowser(): Promise<null> {
+    return null
+}

@@ -85,7 +85,26 @@ export function HawkForm() {
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
                         <SelectItem value="ebay" className="focus:bg-red-600 focus:text-white cursor-pointer">eBay Motors</SelectItem>
+                        <SelectItem value="craigslist" className="focus:bg-red-600 focus:text-white cursor-pointer">Craigslist</SelectItem>
+                        <SelectItem value="offerup" className="focus:bg-red-600 focus:text-white cursor-pointer">OfferUp</SelectItem>
+                        <SelectItem value="car-part" className="focus:bg-red-600 focus:text-white cursor-pointer">Car-Part.com (Junkyard)</SelectItem>
                         <SelectItem value="facebook" className="focus:bg-red-600 focus:text-white cursor-pointer">Facebook Marketplace</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="region" className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Search Region (Craigslist)</Label>
+                <Select name="region" defaultValue="all">
+                    <SelectTrigger className="bg-black border-zinc-800 text-white h-11 focus:ring-red-600 ring-offset-black">
+                        <SelectValue placeholder="Select region" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
+                        <SelectItem value="all" className="focus:bg-red-600">All Major Hubs (National)</SelectItem>
+                        <SelectItem value="west" className="focus:bg-red-600">West Coast</SelectItem>
+                        <SelectItem value="midwest" className="focus:bg-red-600">Midwest</SelectItem>
+                        <SelectItem value="northeast" className="focus:bg-red-600">Northeast</SelectItem>
+                        <SelectItem value="south" className="focus:bg-red-600">South</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
