@@ -56,7 +56,8 @@ export async function POST(request: Request) {
             hawk.keywords,
             hawk.max_price || 1000000,
             hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : [],
-            hawk.vehicle_string || undefined
+            hawk.vehicle_string || undefined,
+            hawk.exact_match || false
         )
 
         console.log(`[Scrape API] Scraper returned ${results.length} items`)

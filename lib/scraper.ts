@@ -8,14 +8,28 @@ import { ScraperResult } from './types'
 const isProduction = process.env.NODE_ENV === 'production'
 
 // Main entry point
-export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
+export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string, exactMatch?: boolean): Promise<ScraperResult[]> {
+    let items: ScraperResult[] = []
+
     if (source === 'ebay') {
-        return scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString)
+        items = await scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString)
+    } else if (source === 'facebook') {
+        items = await scrapeFacebook(keywords, maxPrice, negativeKeywords, vehicleString)
     }
-    if (source === 'facebook') {
-        return scrapeFacebook(keywords, maxPrice, negativeKeywords, vehicleString)
+
+    // Exact Match Filtering
+    if (exactMatch && items.length > 0) {
+        const normalizedKeywords = keywords.toLowerCase().trim()
+        items = items.filter(item => item.title.toLowerCase().includes(normalizedKeywords))
     }
-    return []
+
+    // Negative Keywords are already handled in scrapeEbay/scrapeFacebook usually, or we can enforce here?
+    // Let's enforce here just in case scraper misses it
+    if (negativeKeywords.length > 0) {
+        items = items.filter(item => !negativeKeywords.some(nk => item.title.toLowerCase().includes(nk.toLowerCase())))
+    }
+
+    return items
 }
 
 async function getBrowser() {
