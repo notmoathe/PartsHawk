@@ -98,15 +98,15 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
             const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
 
             console.log(`[Scrape Debug] Navigating to (Attempt ${attempt}): ${url}`)
-            // Switch to domcontentloaded to avoid hanging on tracking scripts/ads
-            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
+            // Switch to networkidle2 to ensure redirects/hydration finish
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 })
 
             // Small buffer to allow redirects/frame-loading to settle
-            await new Promise(r => setTimeout(r, 2000))
+            await new Promise(r => setTimeout(r, 5000))
 
             // Wait for items to likely appear - increased timeout and check for main container
             try {
-                await page.waitForSelector('.s-item', { timeout: 10000 })
+                await page.waitForSelector('.s-item', { timeout: 15000 })
             } catch (e: any) {
                 console.warn(`[Scrape Debug] Timeout/Error waiting for .s-item: ${e.message}. Checking for alternatives...`)
                 // Try waiting for the main result list container
@@ -115,10 +115,14 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
 
             // Check if we hit a captcha or block
             let pageTitle = 'Unknown'
-            try {
-                pageTitle = await page.title()
-            } catch (titleErr) {
-                console.warn('[Scrape Debug] Could not get page title (Frame detached?)')
+            for (let i = 0; i < 3; i++) {
+                try {
+                    pageTitle = await page.title()
+                    break;
+                } catch (titleErr) {
+                    // console.warn('[Scrape Debug] Could not get page title (Frame detached?), retrying...')
+                    await new Promise(r => setTimeout(r, 1000))
+                }
             }
             console.log(`[Scrape Debug] Page Title: ${pageTitle}`)
 
