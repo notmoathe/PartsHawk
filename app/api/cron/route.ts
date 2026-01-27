@@ -39,7 +39,11 @@ export async function GET(request: Request) {
         console.log(`[Cron] Found ${hawks.length} active hawks. Checking schedules...`)
 
         const now = new Date()
-        const promises = hawks.map(async (hawk: { id: string, user_id: string, last_scanned_at: string | null, scan_interval: number | null, keywords: string, source: any, max_price: number | null, negative_keywords: string | null, users: { email: string } | null, webhook_url: string | null, vehicle_string: string | null, exact_match: boolean | null }) => {
+        const results = []
+
+        // EXECUTION: Run sequentially to avoid "ETXTBSY" (File Busy) errors on Vercel
+        // Parallel execution crashes because multiple browsers try to read the same binary
+        for (const hawk of hawks) {
             // Check Interval
             const lastScanned = hawk.last_scanned_at ? new Date(hawk.last_scanned_at) : new Date(0)
             const intervalMinutes = hawk.scan_interval || 60
@@ -47,13 +51,14 @@ export async function GET(request: Request) {
 
             if (!force && now < nextScanTime) {
                 // Not time yet
-                return { id: hawk.id, status: 'skipped', reason: 'Too early' }
+                results.push({ id: hawk.id, status: 'skipped', reason: 'Too early' })
+                continue
             }
 
             console.log(`[Cron] Scanning Hawk: ${hawk.id} (${hawk.keywords})`)
 
             try {
-                // 1. Fetch User Email Securely (Bypass Public/Auth Schema Join issues)
+                // 1. Fetch User Email Securely
                 const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(hawk.user_id)
                 const userEmail = userData?.user?.email
 
@@ -62,7 +67,7 @@ export async function GET(request: Request) {
                 }
 
                 // Perform Scrape
-                const results = await scrape(
+                const scrapeResults = await scrape(
                     hawk.source,
                     hawk.keywords,
                     hawk.max_price || 1000000,
@@ -71,17 +76,17 @@ export async function GET(request: Request) {
                     hawk.exact_match || false
                 )
 
-                // Filter Duplicates
+                // Filter Duplicates logic...
                 const { data: existingListings } = await supabaseAdmin
                     .from('found_listings')
                     .select('url')
                     .eq('hawk_id', hawk.id)
-                    .in('url', results.map(r => r.url))
+                    .in('url', scrapeResults.map(r => r.url))
 
                 const existingUrls = new Set(existingListings?.map(x => x.url) || [])
-                const newItems = results.filter(r => !existingUrls.has(r.url))
+                const newItems = scrapeResults.filter(r => !existingUrls.has(r.url))
 
-                console.log(`[Cron] ${hawk.id}: Found ${results.length} total, ${newItems.length} are new.`)
+                console.log(`[Cron] ${hawk.id}: Found ${scrapeResults.length} total, ${newItems.length} are new.`)
 
                 // Save Results
                 if (newItems.length > 0) {
@@ -128,16 +133,14 @@ export async function GET(request: Request) {
 
                 // Update last_scanned_at
                 await supabaseAdmin.from('hawks').update({ last_scanned_at: new Date().toISOString() }).eq('id', hawk.id)
-
-                return { id: hawk.id, status: 'scanned', items: newItems.length }
+                results.push({ id: hawk.id, status: 'scanned', items: newItems.length })
 
             } catch (e) {
                 console.error(`[Cron] Failed to process hawk ${hawk.id}`, e)
-                return { id: hawk.id, status: 'failed' }
+                results.push({ id: hawk.id, status: 'failed' })
             }
-        })
+        }
 
-        const results = await Promise.all(promises)
         const scannedCount = results.filter(r => r.status === 'scanned').length
 
         return NextResponse.json({
