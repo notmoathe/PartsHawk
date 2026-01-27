@@ -40,32 +40,6 @@ export async function createHawk(formData: FormData) {
         throw new Error(error.message)
     }
 
-    // TRIGGER IMMEDIATE SCRAPE ("Go All Out")
-    // We do not await this to keep UI snappy? 
-    // actually user wants "actual notification", so let's await it and show result count
-    try {
-        const { scrape } = await import('./scraper')
-        const results = await scrape(source as any, keywords, maxPrice || 1000000, negativeKeywords ? negativeKeywords.split(',').map(s => s.trim()) : [])
-
-        if (results.length > 0) {
-            const insertData = results.map(r => ({
-                hawk_id: hawk.id,
-                title: r.title,
-                price: r.price,
-                url: r.url,
-                image_url: r.imageUrl,
-                source: source
-            }))
-            await supabase.from('found_listings').insert(insertData)
-        }
-    } catch (err) {
-        console.error("Immediate scrape failed:", err)
-        // Don't fail the request, just log
-    }
-
-    revalidatePath('/dashboard')
-    // Removing redirect to prevent "Server Components render" error if the unexpected happens during render
-    // The client form naturally resets. We can let the user stay or manually nav.
-    // Actually, redirecting is better UX, but if it crashes...
-    // Let's rely on revalidatePath and let the Client Component handle success state.
+    // Return the hawk so the client can trigger the scrape
+    return { success: true, hawk }
 }

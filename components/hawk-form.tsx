@@ -21,15 +21,42 @@ export function HawkForm() {
         event.preventDefault()
         setLoading(true)
         const formData = new FormData(event.currentTarget)
-        const promise = createHawk(formData)
+
+        // 1. Create the Hawk (Fast)
+        const promise = createHawk(formData).then(async (result) => {
+            // 2. Trigger the Scraper (Background - via Client Fetch)
+            // We do this here so it runs separately from the Server Action transaction
+            if (result?.hawk) {
+                // Trigger API but don't wait for it to finish blocking the UI "success" state?
+                // User wants "actual notification". 
+                // If we wait, we might timeout Vercel Function if the CLIENT connection drops? 
+                // No, fetch calls from client have longer timeouts usually.
+
+                // Let's await it to tell the user the count!
+                try {
+                    const res = await fetch('/api/scrape', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ hawk_id: result.hawk.id })
+                    })
+                    const data = await res.json()
+                    if (data.count > 0) {
+                        return `Agent deployed! Found ${data.count} items instantly.`
+                    }
+                } catch (e) {
+                    console.error("Client trigger failed", e)
+                }
+            }
+            return 'Agent deployed successfully! Scanning in background.'
+        })
 
         toast.promise(promise, {
-            loading: 'Initializing agent...',
-            success: () => {
+            loading: 'Deploying & Initializing Scan...',
+            success: (msg) => {
                 (event.target as HTMLFormElement).reset()
-                // Force a refresh to see the new data since we removed redirect()
+                // Force refresh to show new hawk in list
                 window.location.href = '/dashboard'
-                return 'Agent deployed successfully! Scanning will begin shortly.'
+                return msg
             },
             error: (err) => err.message || 'Failed to deploy agent'
         })
@@ -37,7 +64,7 @@ export function HawkForm() {
         try {
             await promise
         } catch (e) {
-            // Handled by toast.promise
+            // handled by toast
         } finally {
             setLoading(false)
         }
