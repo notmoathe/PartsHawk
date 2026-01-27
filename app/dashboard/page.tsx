@@ -22,6 +22,7 @@ export default async function DashboardPage() {
     const { data: hawks } = await supabase
         .from('hawks')
         .select('*')
+        .neq('status', 'archived') // Hide archived/deleted agents
         .order('created_at', { ascending: false })
 
     // Fetch Recent Finds (Limit 20 for feed)

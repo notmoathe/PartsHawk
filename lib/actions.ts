@@ -65,7 +65,11 @@ export async function createHawk(formData: FormData) {
 
 export async function deleteHawk(id: string) {
     const supabase = await createClient()
-    const { error } = await supabase.from('hawks').delete().eq('id', id)
+    // Soft delete: Archive it so we keep the history/findings
+    const { error } = await supabase
+        .from('hawks')
+        .update({ status: 'archived' })
+        .eq('id', id)
 
     if (error) {
         return { success: false, error: error.message }
