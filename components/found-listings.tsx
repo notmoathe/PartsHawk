@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ExternalLink } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import * as React from 'react'
 
 interface Finding {
     id: string
@@ -36,18 +37,33 @@ export function FoundListings({ listings }: FoundListingsProps) {
     const items = listings as Finding[]
     const router = useRouter() // For client refresh
 
+    const [optimisticItems, setOptimisticItems] = React.useState(items)
+
+    // Sync if props change (e.g. initial load or server refresh)
+    React.useEffect(() => {
+        setOptimisticItems(items)
+    }, [items])
+
     const handleDelete = async (id: string) => {
+        // Optimistic Update
+        const previousItems = [...optimisticItems]
+        setOptimisticItems(current => current.filter(item => item.id !== id))
+
         toast.promise(deleteFinding(id), {
             loading: 'Deleting...',
             success: () => {
                 router.refresh()
                 return 'Item removed.'
             },
-            error: 'Failed to delete'
+            error: () => {
+                // Revert on error
+                setOptimisticItems(previousItems)
+                return 'Failed to delete'
+            }
         })
     }
 
-    if (items.length === 0) {
+    if (optimisticItems.length === 0) {
         // ... (Empty State same as before) ...
         return (
             <Card className="bg-zinc-950 border-zinc-800">
@@ -68,14 +84,14 @@ export function FoundListings({ listings }: FoundListingsProps) {
                 <div className="flex items-center justify-between">
                     <CardTitle className="text-white text-xl font-bold uppercase tracking-wide">Live Feed</CardTitle>
                     <Badge variant="outline" className="border-red-900 text-red-500 bg-red-950/10">
-                        {items.length} RECENT
+                        {optimisticItems.length} RECENT
                     </Badge>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
                 {/* Scrollable Container */}
                 <div className="divide-y divide-zinc-900 max-h-[600px] overflow-y-auto custom-scrollbar">
-                    {items.map((item) => {
+                    {optimisticItems.map((item) => {
                         const maxPrice = item.hawks?.max_price
                         // const isGoodDeal = maxPrice && item.price <= (maxPrice * 0.8)
                         // const discount = maxPrice ? Math.round(((maxPrice - item.price) / maxPrice) * 100) : 0
