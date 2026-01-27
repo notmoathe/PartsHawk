@@ -1,18 +1,16 @@
-import puppeteer from 'puppeteer-core'
+import puppeteer, { HTTPRequest } from 'puppeteer-core'
 import chromium from '@sparticuz/chromium-min'
 import { ScraperResult } from './types'
 
 // Optional: Load local puppeteer for dev if needed, or rely on core with local chrome path
-// We can use a conditional import or just logic.
-// For simplicity in this environment, we'll try to detect.
 const isProduction = process.env.NODE_ENV === 'production'
 
 // Main entry point
-export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string, exactMatch?: boolean): Promise<ScraperResult[]> {
+export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string, exactMatch?: boolean, browserInstance?: any): Promise<ScraperResult[]> {
     let items: ScraperResult[] = []
 
     if (source === 'ebay') {
-        items = await scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString)
+        items = await scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString, browserInstance)
     } else if (source === 'facebook') {
         items = await scrapeFacebook(keywords, maxPrice, negativeKeywords, vehicleString)
     }
@@ -33,7 +31,7 @@ export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keyword
     return items.slice(0, 30)
 }
 
-async function getBrowser() {
+export async function getBrowser() {
     if (isProduction) {
         // Vercel / Production configuration
         return puppeteer.launch({
@@ -60,13 +58,17 @@ async function getBrowser() {
     }
 }
 
-async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
-    let browser = null
+async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string, browserInstance?: any): Promise<ScraperResult[]> {
+    let browser = browserInstance
+    let weLaunchedBrowser = false
     const MAX_RETRIES = 2
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            browser = await getBrowser()
+            if (!browser) {
+                browser = await getBrowser()
+                weLaunchedBrowser = true
+            }
             const page = await browser.newPage()
 
             // Set Viewport
@@ -74,7 +76,7 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
 
             // OPTIMIZATION: Block images, fonts, css to save memory and prevent crashes
             await page.setRequestInterception(true)
-            page.on('request', (req) => {
+            page.on('request', (req: HTTPRequest) => {
                 const resourceType = req.resourceType()
                 if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
                     req.abort()
@@ -233,7 +235,7 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
             // Retry delay
             await new Promise(resolve => setTimeout(resolve, 2000))
         } finally {
-            if (browser) {
+            if (browser && weLaunchedBrowser) {
                 await browser.close()
             }
         }

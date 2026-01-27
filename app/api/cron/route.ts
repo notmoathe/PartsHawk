@@ -43,104 +43,120 @@ export async function GET(request: Request) {
 
         // EXECUTION: Run sequentially to avoid "ETXTBSY" (File Busy) errors on Vercel
         // Parallel execution crashes because multiple browsers try to read the same binary
-        for (const hawk of hawks) {
-            // Check Interval
-            const lastScanned = hawk.last_scanned_at ? new Date(hawk.last_scanned_at) : new Date(0)
-            const intervalMinutes = hawk.scan_interval || 60
-            const nextScanTime = new Date(lastScanned.getTime() + intervalMinutes * 60000)
 
-            if (!force && now < nextScanTime) {
-                // Not time yet
-                results.push({ id: hawk.id, status: 'skipped', reason: 'Too early' })
-                continue
-            }
+        let browser = null
+        try {
+            const { getBrowser } = await import('@/lib/scraper')
+            browser = await getBrowser()
+        } catch (e) {
+            console.warn('[Cron] Failed to pre-launch browser:', e)
+        }
 
-            console.log(`[Cron] Scanning Hawk: ${hawk.id} (${hawk.keywords})`)
+        try {
+            for (const hawk of hawks) {
+                // Check Interval
+                const lastScanned = hawk.last_scanned_at ? new Date(hawk.last_scanned_at) : new Date(0)
+                const intervalMinutes = hawk.scan_interval || 60
+                const nextScanTime = new Date(lastScanned.getTime() + intervalMinutes * 60000)
 
-            try {
-                // 1. Fetch User Email Securely
-                const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(hawk.user_id)
-                const userEmail = userData?.user?.email
-
-                if (userError || !userEmail) {
-                    console.warn(`[Cron] Could not find user email for hawk ${hawk.id}`, userError)
+                if (!force && now < nextScanTime) {
+                    // Not time yet
+                    results.push({ id: hawk.id, status: 'skipped', reason: 'Too early' })
+                    continue
                 }
 
-                // Perform Scrape
-                const scrapeResults = await scrape(
-                    hawk.source,
-                    hawk.keywords,
-                    hawk.max_price || 1000000,
-                    hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : [],
-                    hawk.vehicle_string || undefined,
-                    hawk.exact_match || false
-                )
+                console.log(`[Cron] Scanning Hawk: ${hawk.id} (${hawk.keywords})`)
 
-                // Filter Duplicates Robustly (Compare IDs, not full URLs)
-                const { data: existingListings } = await supabaseAdmin
-                    .from('found_listings')
-                    .select('url')
-                    .eq('hawk_id', hawk.id)
+                try {
+                    // 1. Fetch User Email Securely
+                    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(hawk.user_id)
+                    const userEmail = userData?.user?.email
 
-                const existingIds = new Set(existingListings?.map(x => {
-                    const match = x.url.match(/\/itm\/(\d+)/)
-                    return match ? match[1] : x.url
-                }) || [])
-
-                const newItems = scrapeResults.filter(r => !existingIds.has(r.listingId))
-
-                console.log(`[Cron] ${hawk.id}: Found ${scrapeResults.length} total, ${newItems.length} are new.`)
-
-                // Save Results
-                if (newItems.length > 0) {
-                    const insertData = newItems.map(r => ({
-                        hawk_id: hawk.id,
-                        user_id: hawk.user_id, // Direct ownership
-                        title: r.title,
-                        price: r.price,
-                        url: r.url,
-                        image_url: r.imageUrl,
-                        source: hawk.source
-                    }))
-
-                    const { error: insertError } = await supabaseAdmin.from('found_listings').insert(insertData)
-                    if (insertError) console.error('[Cron] Insert Failed:', insertError)
-
-                    // Send Email
-                    if (userEmail) {
-                        await sendNotificationEmail(userEmail, hawk.keywords, insertData)
+                    if (userError || !userEmail) {
+                        console.warn(`[Cron] Could not find user email for hawk ${hawk.id}`, userError)
                     }
 
-                    // Send Webhook (Discord/Slack)
-                    if (hawk.webhook_url) {
-                        try {
-                            await fetch(hawk.webhook_url, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    content: `🦅 **PartHawk Alert**\nFound ${newItems.length} new items for **${hawk.keywords}**\n${hawk.vehicle_string ? `*Vehicle: ${hawk.vehicle_string}*\n` : ''}`,
-                                    embeds: newItems.slice(0, 10).map(r => ({
-                                        title: r.title,
-                                        url: r.url,
-                                        description: `Price: $${r.price}\nSource: ${hawk.source}`,
-                                        thumbnail: { url: r.imageUrl },
-                                        color: 14548992 // Red
-                                    }))
+                    // Perform Scrape
+                    const scrapeResults = await scrape(
+                        hawk.source,
+                        hawk.keywords,
+                        hawk.max_price || 1000000,
+                        hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : [],
+                        hawk.vehicle_string || undefined,
+                        hawk.exact_match || false,
+                        browser
+                    )
+
+                    // Filter Duplicates Robustly (Compare IDs, not full URLs)
+                    const { data: existingListings } = await supabaseAdmin
+                        .from('found_listings')
+                        .select('url')
+                        .eq('hawk_id', hawk.id)
+
+                    const existingIds = new Set(existingListings?.map(x => {
+                        const match = x.url.match(/\/itm\/(\d+)/)
+                        return match ? match[1] : x.url
+                    }) || [])
+
+                    const newItems = scrapeResults.filter(r => !existingIds.has(r.listingId))
+
+                    console.log(`[Cron] ${hawk.id}: Found ${scrapeResults.length} total, ${newItems.length} are new.`)
+
+                    // Save Results
+                    if (newItems.length > 0) {
+                        const insertData = newItems.map(r => ({
+                            hawk_id: hawk.id,
+                            user_id: hawk.user_id, // Direct ownership
+                            title: r.title,
+                            price: r.price,
+                            url: r.url,
+                            image_url: r.imageUrl,
+                            source: hawk.source
+                        }))
+
+                        const { error: insertError } = await supabaseAdmin.from('found_listings').insert(insertData)
+                        if (insertError) console.error('[Cron] Insert Failed:', insertError)
+
+                        // Send Email
+                        if (userEmail) {
+                            await sendNotificationEmail(userEmail, hawk.keywords, insertData)
+                        }
+
+                        // Send Webhook (Discord/Slack)
+                        if (hawk.webhook_url) {
+                            try {
+                                await fetch(hawk.webhook_url, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        content: `🦅 **PartHawk Alert**\nFound ${newItems.length} new items for **${hawk.keywords}**\n${hawk.vehicle_string ? `*Vehicle: ${hawk.vehicle_string}*\n` : ''}`,
+                                        embeds: newItems.slice(0, 10).map(r => ({
+                                            title: r.title,
+                                            url: r.url,
+                                            description: `Price: $${r.price}\nSource: ${hawk.source}`,
+                                            thumbnail: { url: r.imageUrl },
+                                            color: 14548992 // Red
+                                        }))
+                                    })
                                 })
-                            })
-                        } catch (webhookErr) {
-                            console.error('[Cron] Webhook failed:', webhookErr)
+                            } catch (webhookErr) {
+                                console.error('[Cron] Webhook failed:', webhookErr)
+                            }
                         }
                     }
+
+                    // Update last_scanned_at
+                    await supabaseAdmin.from('hawks').update({ last_scanned_at: new Date().toISOString() }).eq('id', hawk.id)
+                    results.push({ id: hawk.id, status: 'scanned', items: newItems.length })
+
+                } catch (e) {
+                    console.error(`[Cron] Failed to process hawk ${hawk.id}`, e)
+                    results.push({ id: hawk.id, status: 'failed' })
                 }
-
-                // Update last_scanned_at
-                await supabaseAdmin.from('hawks').update({ last_scanned_at: new Date().toISOString() }).eq('id', hawk.id)
-                results.push({ id: hawk.id, status: 'scanned', items: newItems.length })
-
-            } catch (e) {
-                console.error(`[Cron] Failed to process hawk ${hawk.id}`, e)
-                results.push({ id: hawk.id, status: 'failed' })
+            }
+        } finally {
+            if (browser) {
+                try { await browser.close() } catch (e) { }
             }
         }
 
