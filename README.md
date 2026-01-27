@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PartHawk 🦅
 
-## Getting Started
+> **The fastest automated parts tracker for car enthusiasts.**
+> *Never miss a rare part again.*
 
-First, run the development server:
+![Project Status](https://img.shields.io/badge/status-active-success.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Tech Stack](https://img.shields.io/badge/stack-Next.js_14-black)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 📖 About
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+PartHawk is a Micro-SaaS tool built to solve a specific problem for car enthusiasts: **Speed.**
+Finding rare OEM parts on eBay is a race. PartHawk automates the search process, monitoring listings in real-time and delivering instant alerts so users can buy before the scalpers do.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Key Features:**
+- ⚡ **Instant Monitoring:** Checks for new listings every 60 seconds.
+- 🎯 **Precision Filtering:** Filter by "Buy It Now", Price Caps, and Condition.
+- 🛡️ **Trust Score:** Automatically filters out zero-feedback sellers and scams.
+- 📱 **Real-Time Alerts:** (In Progress) SMS notifications via Twilio.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Tech Stack
 
-## Learn More
+Built with the **T3 / Modern Stack** for speed and scalability.
 
-To learn more about Next.js, take a look at the following resources:
+- **Frontend:** [Next.js 14](https://nextjs.org/) (App Router)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/) + Shadcn UI
+- **Database:** [Supabase](https://supabase.com/) (PostgreSQL + Auth)
+- **Backend:** Node.js Server Actions
+- **Scraping:** Puppeteer / eBay Browse API
+- **Hosting:** [Vercel](https://vercel.com/)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Getting Started
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Follow these steps to get the project running on your local machine.
 
-## Deploy on Vercel
+### Prerequisites
+- Node.js 18+ installed
+- A Supabase account (Free Tier)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Installation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Clone the repository**
+   ```bash
+   git clone [https://github.com/notmoathe/PartHawk.git](https://github.com/notmoathe/PartHawk.git)
+   cd PartHawk
