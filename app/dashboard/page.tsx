@@ -1,4 +1,3 @@
-```
 import { createClient } from '@/lib/supabase-server'
 import { HawkForm } from '@/components/hawk-form'
 import { HawksTable } from '@/components/hawks-table'
@@ -6,7 +5,7 @@ import { HawksTable } from '@/components/hawks-table'
 export default async function DashboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     // RLS will handle filtering, but we can also filter by user_id if needed explicitly
     // With RLS + authenticated client, select * returns only user's rows
     let hawks: any[] = []
