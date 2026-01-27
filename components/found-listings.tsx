@@ -19,7 +19,11 @@ interface Finding {
     } | null
 }
 
-export function FoundListings({ listings }: { listings: any[] }) {
+interface FoundListingsProps {
+    listings: unknown[]
+}
+
+export function FoundListings({ listings }: FoundListingsProps) {
     // Cast to Finding[] for easier usage within component
     const items = listings as Finding[]
 

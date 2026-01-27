@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-export async function sendNotificationEmail(to: string, hawkName: string, items: any[]) {
+export async function sendNotificationEmail(to: string, hawkName: string, items: Record<string, unknown>[]) {
     const apiKey = process.env.RESEND_API_KEY
 
     if (!apiKey) {

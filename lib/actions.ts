@@ -52,9 +52,10 @@ export async function createHawk(formData: FormData) {
 
         return { success: true, hawk: plainHawk }
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Server Action Error:', e)
-        return { success: false, error: e.message || 'Unknown server error' }
+        const message = e instanceof Error ? e.message : 'Unknown server error'
+        return { success: false, error: message }
     }
 }
 
@@ -95,7 +96,7 @@ export async function updateHawk(id: string, formData: FormData) {
         }
 
         // Only update editable fields
-        const updateData: any = {
+        const updateData: Record<string, string | number | undefined | null> = {
             keywords,
             max_price: maxPrice,
         }
@@ -111,7 +112,7 @@ export async function updateHawk(id: string, formData: FormData) {
 
         revalidatePath('/dashboard')
         return { success: true }
-    } catch (e: any) {
-        return { success: false, error: e.message }
+    } catch (e: unknown) {
+        return { success: false, error: e instanceof Error ? e.message : 'Update failed' }
     }
 }

@@ -100,8 +100,9 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, count: results.length })
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Scrape API Failed:", e)
-        return NextResponse.json({ error: e.message || 'Scrape failed' }, { status: 500 })
+        const message = e instanceof Error ? e.message : 'Scrape failed'
+        return NextResponse.json({ error: message }, { status: 500 })
     }
 }
