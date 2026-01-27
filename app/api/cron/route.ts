@@ -77,6 +77,7 @@ export async function GET(request: Request) {
             if (newItems.length > 0) {
                 const insertData = newItems.map(r => ({
                     hawk_id: hawk.id,
+                    user_id: hawk.user_id, // Direct ownership
                     title: r.title,
                     price: r.price,
                     url: r.url,

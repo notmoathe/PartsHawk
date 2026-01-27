@@ -35,6 +35,13 @@ export default async function DashboardPage() {
     const activeHawks = hawks?.filter(h => h.status === 'active').length || 0
     const totalFinds = recentFinds?.length || 0
 
+    console.log('[Dashboard Debug] User:', user?.email)
+    console.log('[Dashboard Debug] Hawks Found:', hawks?.length)
+    console.log('[Dashboard Debug] Recent Finds Found (User Context):', recentFinds?.length)
+    if (recentFinds?.length === 0) {
+        console.log('[Dashboard Debug] Recent Finds is EMPTY. RLS or Data issue.')
+    }
+
     // Subscription Logic
     const tier = getUserTier(user?.email)
     const limits = getTierLimits(tier)
