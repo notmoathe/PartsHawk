@@ -52,15 +52,50 @@ export async function createHawk(formData: FormData) {
     }
 }
 
-export async function deleteHawk(hawkId: string) {
+export async function deleteHawk(id: string) {
     'use server'
 
     const supabase = await createClient()
-    const { error } = await supabase.from('hawks').delete().eq('id', hawkId)
+    const { error } = await supabase.from('hawks').delete().eq('id', id)
 
     if (error) {
-        throw new Error(error.message)
+        return { success: false, error: error.message }
     }
 
     revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function updateHawk(id: string, formData: FormData) {
+    'use server'
+
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+            return { success: false, error: 'Unauthorized' }
+        }
+
+        const keywords = formData.get('keywords') as string
+        const maxPrice = formData.get('max_price') ? parseFloat(formData.get('max_price') as string) : null
+
+        // Only update editable fields
+        const { error } = await supabase
+            .from('hawks')
+            .update({
+                keywords,
+                max_price: maxPrice,
+                // reset status if it was paused? optional. let's keep it simple.
+            })
+            .eq('id', id)
+            .eq('user_id', user.id) // Security check
+
+        if (error) throw error
+
+        revalidatePath('/dashboard')
+        return { success: true }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
 }
