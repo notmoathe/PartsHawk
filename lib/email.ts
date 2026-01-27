@@ -20,8 +20,8 @@ export async function sendNotificationEmail(to: string, hawkName: string, items:
             <table style="width:100%; border-collapse: collapse;">
                 ${items.map(item => `
                     <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #333;">
-                            <img src="${item.imageUrl}" width="100" style="border-radius: 4px;" />
+                        <td style="padding: 10px; border-bottom: 1px solid #333; width: 120px;">
+                            <img src="${item.imageUrl}" style="width: 100%; max-width: 100px; border-radius: 4px; display: block;" alt="Item Image" />
                         </td>
                         <td style="padding: 10px; border-bottom: 1px solid #333;">
                             <a href="${item.url}" style="color: #de1f1f; font-weight: bold; text-decoration: none; font-size: 16px;">

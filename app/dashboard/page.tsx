@@ -12,6 +12,7 @@ import { ForceScanButton } from '@/components/force-scan-button'
 import { FoundListings } from '@/components/found-listings'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0 // Force fresh data on every load
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -132,7 +133,7 @@ export default async function DashboardPage() {
                         </CardHeader>
                         <CardContent className="relative z-10">
                             <p className="text-green-900 text-xs uppercase font-bold bg-green-500/10 inline-block px-2 py-1">
-                                Scanning every {limits.scanIntervalMinutes}m
+                                Scanning every {isFree ? '1440' : tier === 'owner' ? '1' : tier === 'club' ? '5' : '60'}m
                             </p>
                         </CardContent>
                     </Card>

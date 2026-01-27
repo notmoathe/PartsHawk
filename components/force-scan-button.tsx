@@ -18,17 +18,30 @@ export function ForceScanButton() {
             // OR just call /api/cron with a secret if we want to test that specifically.
             // Let's assume we make a dedicated client-triggerable endpoint for the user.
 
-            const res = await fetch('/api/cron?force=true', {
-                method: 'GET', // Vercel Cron is GET
-            })
+            // Set a client-side timeout to avoid hanging if the server takes too long (Vercel has limit)
+            const controller = new AbortController()
+            const id = setTimeout(() => controller.abort(), 8000) // 8 second timeout
 
-            if (res.ok) {
-                toast.success('System-wide scan initiated.')
-            } else {
-                toast.error('Failed to trigger scan.')
+            try {
+                const res = await fetch('/api/cron?force=true', {
+                    method: 'GET',
+                    signal: controller.signal
+                })
+                clearTimeout(id)
+
+                if (res.ok) {
+                    toast.success('System-wide scan completed successfully.')
+                } else {
+                    toast.error('Scan trigger failed.')
+                }
+            } catch (e: any) {
+                if (e.name === 'AbortError') {
+                    // It timed out, but likely is still running on server
+                    toast.success('Scan initiated! Agents are working in the background.')
+                } else {
+                    toast.error('Connection error.')
+                }
             }
-        } catch (e) {
-            toast.error('Connection error.')
         } finally {
             setLoading(false)
         }
