@@ -44,7 +44,7 @@ async function getBrowser() {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--no-zygote',
-                '--single-process' // Critical for some Vercel envs
+                '--disable-features=site-per-process' // Fixes frame detached issues
             ],
             executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'),
             headless: true,
@@ -92,11 +92,14 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         // Switch to domcontentloaded to avoid hanging on tracking scripts/ads
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
 
+        // Small buffer to allow redirects/frame-loading to settle
+        await new Promise(r => setTimeout(r, 2000))
+
         // Wait for items to likely appear - increased timeout and check for main container
         try {
             await page.waitForSelector('.s-item', { timeout: 10000 })
-        } catch (e) {
-            console.warn('[Scrape Debug] Timeout waiting for .s-item selector. Checking for alternatives...')
+        } catch (e: any) {
+            console.warn(`[Scrape Debug] Timeout/Error waiting for .s-item: ${e.message}. Checking for alternatives...`)
             // Try waiting for the main result list container
             try { await page.waitForSelector('.srp-results', { timeout: 5000 }) } catch (e2) { }
         }
