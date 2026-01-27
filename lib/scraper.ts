@@ -62,13 +62,16 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
 
         console.log(`[Scrape Debug] Navigating to: ${url}`)
-        await page.goto(url, { waitUntil: 'domcontentloaded' })
+        // Switch to networkidle2 to ensure AJAX results load
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 })
 
-        // Wait for items to likely appear
+        // Wait for items to likely appear - increased timeout and check for main container
         try {
-            await page.waitForSelector('.s-item', { timeout: 5000 })
+            await page.waitForSelector('.s-item', { timeout: 10000 })
         } catch (e) {
-            console.warn('[Scrape Debug] Timeout waiting for .s-item selector')
+            console.warn('[Scrape Debug] Timeout waiting for .s-item selector. Checking for alternatives...')
+            // Try waiting for the main result list container
+            try { await page.waitForSelector('.srp-results', { timeout: 5000 }) } catch (e2) { }
         }
 
         // Check if we hit a captcha or block
