@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,95 +13,114 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [message, setMessage] = useState<string | null>(null)
+    const [isSignUp, setIsSignUp] = useState(false)
 
-    // Use client-side supabase for auth
     const supabase = createClient()
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
+        setMessage(null)
 
-        // Attempt sign in
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        })
-
-        if (error) {
-            setError(error.message)
+        if (isSignUp) {
+            const { error } = await supabase.auth.signUp({ email, password })
+            if (error) {
+                setError(error.message)
+            } else {
+                setMessage('Check your email for the confirmation link!')
+            }
         } else {
-            // Redirect to dashboard
-            window.location.href = '/dashboard'
-        }
-        setLoading(false)
-    }
-
-    const handleSignup = async () => {
-        setLoading(true)
-        setError(null)
-
-        const { error } = await supabase.auth.signUp({
-            email,
-            password
-        })
-
-        if (error) {
-            setError(error.message)
-        } else {
-            setMessage('Check your email for the confirmation link!')
+            const { error } = await supabase.auth.signInWithPassword({ email, password })
+            if (error) {
+                setError(error.message)
+            } else {
+                window.location.href = '/dashboard'
+            }
         }
         setLoading(false)
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
-            <Card className="w-full max-w-md border-zinc-800 bg-zinc-900 text-zinc-100">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold text-center">Welcome to PartHawk</CardTitle>
-                    <CardDescription className="text-center text-zinc-400">
-                        Sign in to manage your monitors
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleLogin} className="space-y-4">
+        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black flex items-center justify-center p-6">
+            <div className="w-full max-w-md">
+                {/* Logo */}
+                <div className="text-center mb-8">
+                    <Link href="/" className="text-3xl font-black tracking-tighter text-white">
+                        Part<span className="text-blue-500">Hawk</span>
+                    </Link>
+                    <p className="text-zinc-500 mt-2">
+                        {isSignUp ? 'Create your account' : 'Welcome back'}
+                    </p>
+                </div>
+
+                {/* Card */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 backdrop-blur-xl">
+                    <form onSubmit={handleAuth} className="space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email" className="text-zinc-300">Email</Label>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="m@example.com"
+                                placeholder="you@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="bg-zinc-950 border-zinc-800"
+                                className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-blue-500 focus:ring-blue-500/20 h-12"
                             />
                         </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password" className="text-zinc-300">Password</Label>
                             <Input
                                 id="password"
                                 type="password"
+                                placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="bg-zinc-950 border-zinc-800"
+                                className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-blue-500 focus:ring-blue-500/20 h-12"
                             />
                         </div>
-                        {error && <p className="text-sm text-red-500">{error}</p>}
-                        {message && <p className="text-sm text-green-500">{message}</p>}
 
-                        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-                            {loading ? 'Processing...' : 'Sign In'}
+                        {error && (
+                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        {message && (
+                            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+                                {message}
+                            </div>
+                        )}
+
+                        <Button
+                            type="submit"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold h-12 text-base rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40"
+                            disabled={loading}
+                        >
+                            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
                         </Button>
                     </form>
-                </CardContent>
-                <CardFooter className="flex justify-center">
-                    <Button variant="link" onClick={handleSignup} className="text-zinc-400 hover:text-white" disabled={loading}>
-                        Need an account? Sign Up
-                    </Button>
-                </CardFooter>
-            </Card>
+
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={() => setIsSignUp(!isSignUp)}
+                            className="text-zinc-400 hover:text-white text-sm transition-colors"
+                        >
+                            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Back Link */}
+                <div className="text-center mt-6">
+                    <Link href="/" className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
+                        ← Back to home
+                    </Link>
+                </div>
+            </div>
         </div>
     )
 }

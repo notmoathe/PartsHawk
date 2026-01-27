@@ -4,9 +4,6 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { createHawk } from '@/lib/actions'
-
 import {
     Select,
     SelectContent,
@@ -14,6 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { createHawk } from '@/lib/actions'
 
 export function HawkForm() {
     const [loading, setLoading] = useState(false)
@@ -24,57 +22,71 @@ export function HawkForm() {
         const formData = new FormData(event.currentTarget)
         try {
             await createHawk(formData)
-            // Reset form or show success
-            alert('Hawk created!')
-        } catch (e) {
-            console.error(e)
-            alert('Failed to create hawk')
+                ; (event.target as HTMLFormElement).reset()
+            alert('Hawk created successfully!')
+        } catch (e: any) {
+            alert(e.message || 'Failed to create hawk')
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <Card className="w-full max-w-md mx-auto">
-            <CardHeader>
-                <CardTitle>Add New Hawk</CardTitle>
-                <CardDescription>Monitor parts matching your criteria.</CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="source">Source</Label>
-                        <Select name="source" defaultValue="ebay">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select platform" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ebay">eBay</SelectItem>
-                                <SelectItem value="facebook">Facebook Marketplace (Beta)</SelectItem>
-                                <SelectItem value="craigslist">Craigslist</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="keywords">Keywords</Label>
-                        <Input id="keywords" name="keywords" placeholder="e.g. G35 Coupe Headlight" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="max_price">Max Price ($)</Label>
-                        <Input id="max_price" name="max_price" type="number" step="0.01" placeholder="150.00" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="negative_keywords">Negative Keywords</Label>
-                        <Input id="negative_keywords" name="negative_keywords" placeholder="-broken -aftermarket" />
-                        <p className="text-xs text-muted-foreground">Comma separated or space separated</p>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? 'Deploying Hawk...' : 'Deploy Hawk'}
-                    </Button>
-                </CardFooter>
-            </form>
-        </Card>
+        <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+                <Label htmlFor="source" className="text-zinc-300">Platform</Label>
+                <Select name="source" defaultValue="ebay">
+                    <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white h-11">
+                        <SelectValue placeholder="Select platform" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-800">
+                        <SelectItem value="ebay" className="text-white focus:bg-zinc-800">eBay</SelectItem>
+                        <SelectItem value="facebook" className="text-white focus:bg-zinc-800">Facebook Marketplace</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="keywords" className="text-zinc-300">Keywords</Label>
+                <Input
+                    id="keywords"
+                    name="keywords"
+                    placeholder="e.g. G35 Coupe Headlight"
+                    required
+                    className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 h-11"
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="max_price" className="text-zinc-300">Max Price ($)</Label>
+                <Input
+                    id="max_price"
+                    name="max_price"
+                    type="number"
+                    placeholder="200"
+                    required
+                    className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 h-11"
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="negative_keywords" className="text-zinc-300">Exclude Words</Label>
+                <Input
+                    id="negative_keywords"
+                    name="negative_keywords"
+                    placeholder="broken, damaged, replica"
+                    className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 h-11"
+                />
+                <p className="text-xs text-zinc-600">Comma-separated words to filter out</p>
+            </div>
+
+            <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold h-11 rounded-lg"
+                disabled={loading}
+            >
+                {loading ? 'Creating...' : 'Create Hawk'}
+            </Button>
+        </form>
     )
 }
