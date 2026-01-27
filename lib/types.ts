@@ -5,6 +5,7 @@ export interface Hawk {
     negative_keywords?: string
     max_price: number
     condition?: string
+    source: 'ebay' | 'facebook' | 'craigslist'
     status: 'active' | 'paused'
     created_at: string
 }

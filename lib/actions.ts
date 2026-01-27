@@ -7,6 +7,7 @@ export async function createHawk(formData: FormData) {
     const keywords = formData.get('keywords') as string
     const maxPrice = parseFloat(formData.get('max_price') as string)
     const negativeKeywords = formData.get('negative_keywords') as string
+    const source = formData.get('source') as string || 'ebay'
 
     // TODO: Get real user ID from auth
     // const { data: { user } } = await supabase.auth.getUser()
@@ -36,6 +37,7 @@ export async function createHawk(formData: FormData) {
         keywords,
         max_price: maxPrice,
         negative_keywords: negativeKeywords,
+        source,
         status: 'active'
         // user_id is missing
     })

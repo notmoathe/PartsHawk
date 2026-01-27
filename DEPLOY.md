@@ -14,7 +14,7 @@ git init
 git add .
 git commit -m "Initial commit"
 # Create a new repo on GitHub.com and copy the URL
-git remote add origin https://github.com/YOUR_USERNAME/PartHawk.git
+git remote add origin https://github.com/notmoathe/PartsHawk.git
 git push -u origin main
 ```
 
@@ -24,9 +24,15 @@ git push -u origin main
 3.  Import your `PartHawk` repository.
 4.  **Framework Preset**: Select `Next.js`.
 5.  **Environment Variables**:
-    *   Add `NEXT_PUBLIC_SUPABASE_URL`: (from Supabase Settings -> API)
-    *   Add `SUPABASE_SERVICE_ROLE_KEY`: (from Supabase Settings -> API)
-6.  Click **Deploy**.
+    *   Add `NEXT_PUBLIC_SUPABASE_URL`: To find this:
+        1.  Go to your Supabase Dashboard.
+        2.  Click **Project Settings** (the cog icon at the bottom left).
+        3.  Click **API**.
+        4.  Copy the **Project URL** (it looks like `https://abcdefghijklm.supabase.co`).
+    *   Add `SUPABASE_SERVICE_ROLE_KEY`: Use the **Secret Key** (starts with `sb_secret_...`).
+
+6.  **Root Directory**: Leave this as the default (e.g., `./` or `PartHawk`). Do NOT select `app` or `components`.
+7.  Click **Deploy**.
 
 ## Step 3: Verify Deployment
 Vercel will build your project. Once done, it will give you a live URL (e.g., `parthawk.vercel.app`).

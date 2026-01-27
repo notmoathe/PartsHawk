@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { scrapeEbay } from './scraper'
+import { scrape } from './scraper'
 import { Hawk, ScraperResult } from './types'
 
 export async function runMonitor() {
@@ -24,11 +24,13 @@ export async function runMonitor() {
 }
 
 async function processHawk(hawk: Hawk) {
-    console.log(`Processing hawk: ${hawk.keywords}`)
+    console.log(`Processing hawk: ${hawk.keywords} [${hawk.source}]`)
     const negativeKeywords = hawk.negative_keywords ? hawk.negative_keywords.split(',').map(s => s.trim()) : []
 
     // 2. Scrape
-    const results = await scrapeEbay(hawk.keywords, hawk.max_price, negativeKeywords)
+    // Default to ebay if source is undefined (legacy support)
+    const source = hawk.source || 'ebay'
+    const results = await scrape(source, hawk.keywords, hawk.max_price, negativeKeywords)
     console.log(`Found ${results.length} results for ${hawk.keywords}`)
 
     for (const result of results) {

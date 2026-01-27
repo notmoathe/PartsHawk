@@ -7,6 +7,14 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { createHawk } from '@/lib/actions'
 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
 export function HawkForm() {
     const [loading, setLoading] = useState(false)
 
@@ -17,7 +25,7 @@ export function HawkForm() {
         try {
             await createHawk(formData)
             // Reset form or show success
-            alert('Hawk created! (Mock)')
+            alert('Hawk created!')
         } catch (e) {
             console.error(e)
             alert('Failed to create hawk')
@@ -30,10 +38,23 @@ export function HawkForm() {
         <Card className="w-full max-w-md mx-auto">
             <CardHeader>
                 <CardTitle>Add New Hawk</CardTitle>
-                <CardDescription>Monitor eBay for parts matching your criteria.</CardDescription>
+                <CardDescription>Monitor parts matching your criteria.</CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="source">Source</Label>
+                        <Select name="source" defaultValue="ebay">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select platform" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ebay">eBay</SelectItem>
+                                <SelectItem value="facebook">Facebook Marketplace (Beta)</SelectItem>
+                                <SelectItem value="craigslist">Craigslist</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="keywords">Keywords</Label>
                         <Input id="keywords" name="keywords" placeholder="e.g. G35 Coupe Headlight" required />

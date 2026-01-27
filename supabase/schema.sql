@@ -9,6 +9,7 @@ create table public.hawks (
   negative_keywords text,
   max_price numeric not null,
   condition text, -- 'new', 'used', 'parts'
+  source text default 'ebay', -- 'ebay', 'facebook', 'craigslist'
   status text default 'active', -- 'active', 'paused'
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

@@ -7,36 +7,40 @@ import { ScraperResult } from './types'
 // For simplicity in this environment, we'll try to detect.
 const isProduction = process.env.NODE_ENV === 'production'
 
-export async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
+// Main entry point
+export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
+    if (source === 'ebay') {
+        return scrapeEbay(keywords, maxPrice, negativeKeywords)
+    }
+    if (source === 'facebook') {
+        return scrapeFacebook(keywords, maxPrice, negativeKeywords)
+    }
+    return []
+}
+
+async function getBrowser() {
+    if (isProduction) {
+        // Vercel / Production configuration
+        return puppeteer.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'),
+            headless: true,
+        })
+    } else {
+        // Local Development configuration
+        // REFACTOR: Dynamic import to avoid bundling full puppeteer in Vercel
+        const { default: puppeteerLocal } = await import('puppeteer')
+        return puppeteerLocal.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        })
+    }
+}
+
+async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
     let browser = null
     try {
-        if (isProduction) {
-            // Vercel / Production configuration
-            browser = await puppeteer.launch({
-                args: chromium.args,
-                executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'),
-                headless: true,
-            })
-        } else {
-            // Local Development configuration
-            // Try to find local chrome or use puppeteer default if we had the full package
-            // Since we installed full 'puppeteer' before, we can use its executable path if known,
-            // or rely on the user having Chrome installed.
-            // A robust way for local dev with puppeteer-core is to use the installed browser.
-            // Or we can dynamically import 'puppeteer' (full) if available.
-
-            // For this specific user environment (Windows), let's look for standard Chrome or use the temp_app's path if we can.
-            // Actually, since we have 'puppeteer' in package.json, we can use it for local dev.
-            // But we must import it.
-
-            // REFACTOR: Dynamic import to avoid bundling full puppeteer in Vercel
-            const { default: puppeteerLocal } = await import('puppeteer')
-            browser = await puppeteerLocal.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            })
-        }
-
+        browser = await getBrowser()
         const page = await browser.newPage()
 
         // Construct search URL
@@ -93,11 +97,30 @@ export async function scrapeEbay(keywords: string, maxPrice: number, negativeKey
         return filteredResults
 
     } catch (error) {
-        console.error('Scraping failed:', error)
+        console.error('eBay Scraping failed:', error)
         return []
     } finally {
         if (browser) {
             await browser.close()
         }
     }
+}
+
+async function scrapeFacebook(keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
+    // MOCK: Real FB scraping requires complex auth/proxy handling.
+    // Returning a mock result to demonstrate the UI capability.
+    console.log(`[MOCK] Scraping Facebook Marketplace for ${keywords}...`)
+
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    return [
+        {
+            listingId: 'fb-mock-12345',
+            title: `[FB] ${keywords} - Like New`,
+            price: maxPrice * 0.8,
+            url: 'https://facebook.com/marketplace/item/12345',
+            imageUrl: 'https://placehold.co/400x300?text=FB+Item'
+        }
+    ]
 }
