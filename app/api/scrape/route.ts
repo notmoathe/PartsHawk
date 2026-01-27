@@ -20,6 +20,20 @@ export async function POST(request: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Create Admin Client for bypassing RLS during insert
+    // This is required because the scraper is a "system" process adding data
+    const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
+    const supabaseAdmin = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
+    )
+
     // 2. Fetch Hawk Details
     const { data: hawk, error } = await supabase
         .from('hawks')
@@ -57,7 +71,8 @@ export async function POST(request: Request) {
                 source: hawk.source
             }))
 
-            const { error: insertError } = await supabase.from('found_listings').insert(insertData)
+            // Use Admin Client to Insert
+            const { error: insertError } = await supabaseAdmin.from('found_listings').insert(insertData)
             if (insertError) {
                 console.error('[Scrape API] Insert failed:', insertError)
                 throw insertError
