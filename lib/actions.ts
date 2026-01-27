@@ -125,9 +125,19 @@ export async function updateHawk(id: string, formData: FormData) {
 
 export async function deleteFinding(id: string) {
     const supabase = await createClient()
-    const { error } = await supabase.from('found_listings').delete().eq('id', id)
+
+    // Auth check
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    const { error } = await supabase
+        .from('found_listings')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id) // Ensure ownership
 
     if (error) {
+        console.error("Delete Error:", error)
         return { success: false, error: error.message }
     }
 

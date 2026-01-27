@@ -29,7 +29,8 @@ export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keyword
         items = items.filter(item => !negativeKeywords.some(nk => item.title.toLowerCase().includes(nk.toLowerCase())))
     }
 
-    return items
+    // Return more items to ensure we find "new" ones that might be pushed down by sticky listings
+    return items.slice(0, 30)
 }
 
 async function getBrowser() {
