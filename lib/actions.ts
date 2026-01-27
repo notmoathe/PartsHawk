@@ -21,6 +21,7 @@ export async function createHawk(formData: FormData) {
         const scanInterval = parseInt(formData.get('scan_interval') as string) || 60
         const vehicleString = formData.get('vehicle_string') as string
         const webhookUrl = formData.get('webhook_url') as string
+        const exactMatch = formData.get('exact_match') === 'on'
 
         // Validate Interval based on Tier
         const tier = getUserTier(user.email)
@@ -39,7 +40,8 @@ export async function createHawk(formData: FormData) {
             status: 'active',
             scan_interval: scanInterval,
             vehicle_string: vehicleString || null,
-            webhook_url: webhookUrl || null
+            webhook_url: webhookUrl || null,
+            exact_match: exactMatch
         }).select().single()
 
         if (error) {
@@ -119,4 +121,16 @@ export async function updateHawk(id: string, formData: FormData) {
     } catch (e: unknown) {
         return { success: false, error: e instanceof Error ? e.message : 'Update failed' }
     }
+}
+
+export async function deleteFinding(id: string) {
+    const supabase = await createClient()
+    const { error } = await supabase.from('found_listings').delete().eq('id', id)
+
+    if (error) {
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/dashboard')
+    return { success: true }
 }

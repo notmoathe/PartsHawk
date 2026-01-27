@@ -91,7 +91,13 @@ export function HawkForm() {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="keywords" className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Part Name / Keywords</Label>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="keywords" className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Part Name / Keywords</Label>
+                    <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="exact_match" name="exact_match" className="w-3 h-3 accent-red-600 rounded-sm bg-zinc-900 border-zinc-700" />
+                        <label htmlFor="exact_match" className="text-[10px] text-zinc-500 font-bold uppercase cursor-pointer select-none">Exact Match Only</label>
+                    </div>
+                </div>
                 <Input
                     id="keywords"
                     name="keywords"
