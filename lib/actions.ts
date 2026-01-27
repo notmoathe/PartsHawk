@@ -1,10 +1,10 @@
+'use server'
+
 import { createClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 import { getUserTier, getTierLimits } from '@/lib/subscription'
 
 export async function createHawk(formData: FormData) {
-    'use server'
-
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -60,8 +60,6 @@ export async function createHawk(formData: FormData) {
 }
 
 export async function deleteHawk(id: string) {
-    'use server'
-
     const supabase = await createClient()
     const { error } = await supabase.from('hawks').delete().eq('id', id)
 
@@ -74,8 +72,6 @@ export async function deleteHawk(id: string) {
 }
 
 export async function updateHawk(id: string, formData: FormData) {
-    'use server'
-
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
