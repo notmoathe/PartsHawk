@@ -76,15 +76,18 @@ export async function GET(request: Request) {
                     hawk.exact_match || false
                 )
 
-                // Filter Duplicates logic...
+                // Filter Duplicates Robustly (Compare IDs, not full URLs)
                 const { data: existingListings } = await supabaseAdmin
                     .from('found_listings')
                     .select('url')
                     .eq('hawk_id', hawk.id)
-                    .in('url', scrapeResults.map(r => r.url))
 
-                const existingUrls = new Set(existingListings?.map(x => x.url) || [])
-                const newItems = scrapeResults.filter(r => !existingUrls.has(r.url))
+                const existingIds = new Set(existingListings?.map(x => {
+                    const match = x.url.match(/\/itm\/(\d+)/)
+                    return match ? match[1] : x.url
+                }) || [])
+
+                const newItems = scrapeResults.filter(r => !existingIds.has(r.listingId))
 
                 console.log(`[Cron] ${hawk.id}: Found ${scrapeResults.length} total, ${newItems.length} are new.`)
 

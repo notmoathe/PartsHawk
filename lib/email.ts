@@ -33,7 +33,7 @@ export async function sendNotificationEmail(to: string, hawkName: string, items:
                 `).join('')}
             </table>
             <br/>
-            <a href="https://tracemotorsports.vercel.app/dashboard" style="background: #de1f1f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View in Command Center</a>
+            <a href="https://tracemotorsports.com/dashboard" style="background: #de1f1f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View in Command Center</a>
         `
     })
 
