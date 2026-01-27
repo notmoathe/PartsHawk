@@ -65,7 +65,8 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            if (!browser) {
+            if (!browser || !browser.isConnected()) {
+                console.warn('[Scrape Debug] Browser disconnected or missing. Launching new instance...')
                 browser = await getBrowser()
                 weLaunchedBrowser = true
             }
@@ -100,8 +101,29 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
             const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
 
             console.log(`[Scrape Debug] Navigating to (Attempt ${attempt}): ${url}`)
-            // Switch to networkidle2 to ensure redirects/hydration finish
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 })
+
+            // Robust Navigation with Retry
+            let navSuccess = false
+            for (let navAttempt = 0; navAttempt < 3; navAttempt++) {
+                try {
+                    // Switch to domcontentloaded to be less sensitive to network flakiness, then wait explicitly
+                    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
+                    navSuccess = true
+                    break
+                } catch (navErr: any) {
+                    console.warn(`[Scrape Debug] Navigation attempt ${navAttempt + 1} failed: ${navErr.message}`)
+                    if (navErr.message.includes('detached') || navErr.message.includes('closed')) {
+                        // Wait a bit before retrying
+                        await new Promise(r => setTimeout(r, 2000))
+                        continue
+                    }
+                    throw navErr // Rethrow other errors
+                }
+            }
+
+            if (!navSuccess) {
+                throw new Error('Failed to navigate to page after multiple attempts')
+            }
 
             // Small buffer to allow redirects/frame-loading to settle
             await new Promise(r => setTimeout(r, 5000))
@@ -122,7 +144,6 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     pageTitle = await page.title()
                     break;
                 } catch (titleErr) {
-                    // console.warn('[Scrape Debug] Could not get page title (Frame detached?), retrying...')
                     await new Promise(r => setTimeout(r, 1000))
                 }
             }
