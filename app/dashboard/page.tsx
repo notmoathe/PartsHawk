@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { getUserTier, getTierLimits } from '@/lib/subscription'
 import { Lock } from 'lucide-react'
+import { ForceScanButton } from '@/components/force-scan-button'
 
 import { FoundListings } from '@/components/found-listings'
 
@@ -72,19 +73,22 @@ export default async function DashboardPage() {
                         <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter mb-1">Command Center</h1>
                         <p className="text-zinc-500 font-medium">Manage your automated search agents.</p>
                     </div>
-                    {isFree ? (
-                        <Button
-                            className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-bold uppercase tracking-wide border-0 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] animate-pulse"
-                        // formAction is for forms, this is a button. We need client interaction, but this is a server component.
-                        // We should probably make a client component wrapper or just link to home for now.
-                        >
-                            <Link href="/#pricing">Upgrade to Club Spec</Link>
-                        </Button>
-                    ) : (
-                        <Button variant="outline" className="border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wide hover:bg-zinc-900 hover:text-white pointer-events-none opacity-50">
-                            {tier === 'owner' ? 'System Override Active' : 'Club Spec Active'}
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        <ForceScanButton />
+                        {isFree ? (
+                            <Button
+                                className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-bold uppercase tracking-wide border-0 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] animate-pulse"
+                            // formAction is for forms, this is a button. We need client interaction, but this is a server component.
+                            // We should probably make a client component wrapper or just link to home for now.
+                            >
+                                <Link href="/#pricing">Upgrade to Club Spec</Link>
+                            </Button>
+                        ) : (
+                            <Button variant="outline" className="border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wide hover:bg-zinc-900 hover:text-white pointer-events-none opacity-50">
+                                {tier === 'owner' ? 'System Override Active' : 'Club Spec Active'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Stats Grid */}

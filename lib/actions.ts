@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
+import { getUserTier, getTierLimits } from '@/lib/subscription'
 import { redirect } from 'next/navigation'
 import { getUserTier, canCreateHawk, isSourceAllowed, getTierLimits } from '@/lib/subscription'
 
@@ -21,6 +22,14 @@ export async function createHawk(formData: FormData) {
         const condition = formData.get('condition') as string
         const negativeKeywords = formData.get('negative_keywords') as string
         const source = (formData.get('source') as string) || 'ebay'
+        const scanInterval = parseInt(formData.get('scan_interval') as string) || 60
+
+        // Validate Interval based on Tier
+        const tier = getUserTier(user.email)
+        const limits = getTierLimits(tier)
+        if (scanInterval < limits.scanIntervalMinutes) {
+            return { success: false, error: `Your plan limits scanning to every ${limits.scanIntervalMinutes} minutes.` }
+        }
 
         const { data: hawk, error } = await supabase.from('hawks').insert({
             user_id: user.id,
@@ -30,6 +39,7 @@ export async function createHawk(formData: FormData) {
             negative_keywords: negativeKeywords,
             source,
             status: 'active',
+            scan_interval: scanInterval
         }).select().single()
 
         if (error) {
@@ -79,15 +89,25 @@ export async function updateHawk(id: string, formData: FormData) {
 
         const keywords = formData.get('keywords') as string
         const maxPrice = formData.get('max_price') ? parseFloat(formData.get('max_price') as string) : null
+        const scanInterval = formData.get('scan_interval') ? parseInt(formData.get('scan_interval') as string) : undefined
+
+        const tier = getUserTier(user.email)
+        const limits = getTierLimits(tier)
+
+        if (scanInterval && scanInterval < limits.scanIntervalMinutes) {
+            return { success: false, error: `Your plan limits scanning to every ${limits.scanIntervalMinutes} minutes.` }
+        }
 
         // Only update editable fields
+        const updateData: any = {
+            keywords,
+            max_price: maxPrice,
+        }
+        if (scanInterval) updateData.scan_interval = scanInterval
+
         const { error } = await supabase
             .from('hawks')
-            .update({
-                keywords,
-                max_price: maxPrice,
-                // reset status if it was paused? optional. let's keep it simple.
-            })
+            .update(updateData)
             .eq('id', id)
             .eq('user_id', user.id) // Security check
 

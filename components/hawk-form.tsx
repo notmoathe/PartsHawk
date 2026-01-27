@@ -131,6 +131,23 @@ export function HawkForm() {
             </div>
 
             <div className="space-y-2 pb-2">
+                <Label htmlFor="scan_interval" className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Scan Frequency</Label>
+                <Select name="scan_interval" defaultValue="60">
+                    <SelectTrigger className="bg-black border-zinc-800 text-white h-11 focus:ring-red-600 ring-offset-black">
+                        <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
+                        <SelectItem value="60" className="focus:bg-red-600">Every Hour</SelectItem>
+                        <SelectItem value="1440" className="focus:bg-red-600">Every 24 Hours</SelectItem>
+                        <SelectItem value="15" className="focus:bg-red-600">Every 15 Minutes (Club Only)</SelectItem>
+                        <SelectItem value="5" className="focus:bg-red-600">Every 5 Minutes (Club Only)</SelectItem>
+                        <SelectItem value="1" className="focus:bg-red-600">Every Minute (Owner Only)</SelectItem>
+                    </SelectContent>
+                </Select>
+                <p className="text-[10px] text-zinc-600">Subject to plan limits. Higher tiers unlock faster scanning.</p>
+            </div>
+
+            <div className="space-y-2 pb-2">
                 <Label htmlFor="negative_keywords" className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Exclude Keywords</Label>
                 <Input
                     id="negative_keywords"
