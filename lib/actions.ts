@@ -37,10 +37,14 @@ export async function createHawk(formData: FormData) {
             return { success: false, error: error.message || 'Database insert failed' }
         }
 
-        // Return the hawk so the client can trigger the scrape
-        // REMOVED revalidatePath to prevent "Server Component Render" errors if the dashboard fails to render during the action.
-        // The client will force a navigation anyway.
-        return { success: true, hawk }
+        // Return valid JSON-serializable data only
+        const plainHawk = {
+            id: hawk.id,
+            keywords: hawk.keywords,
+            source: hawk.source
+        }
+
+        return { success: true, hawk: plainHawk }
 
     } catch (e: any) {
         console.error('Server Action Error:', e)

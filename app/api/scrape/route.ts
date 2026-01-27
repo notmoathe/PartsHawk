@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase-server'
 import { scrape } from '@/lib/scraper'
 import { NextResponse } from 'next/server'
 
+export const runtime = 'nodejs'
+export const maxDuration = 60 // Allow 60 seconds for scraping
+
 export async function POST(request: Request) {
     // 1. Validate Request
     const body = await request.json()
