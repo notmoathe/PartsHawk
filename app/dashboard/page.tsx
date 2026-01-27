@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     // Fetch Recent Finds (Limit 20 for feed)
     const { data: recentFinds } = await supabase
         .from('found_listings')
-        .select('*')
+        .select('*, hawks ( max_price, keywords )')
         .order('created_at', { ascending: false })
         .limit(20)
 
