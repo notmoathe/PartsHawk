@@ -57,10 +57,23 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         // _sacat = 0 (all categories)
         // _udhi = max price
         // _sop = 10 (newly listed)
+        // Construct search URL
         const encodedKeywords = encodeURIComponent(keywords)
         const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
 
+        console.log(`[Scrape Debug] Navigating to: ${url}`)
         await page.goto(url, { waitUntil: 'domcontentloaded' })
+
+        // Wait for items to likely appear
+        try {
+            await page.waitForSelector('.s-item', { timeout: 5000 })
+        } catch (e) {
+            console.warn('[Scrape Debug] Timeout waiting for .s-item selector')
+        }
+
+        // Check if we hit a captcha or block
+        const pageTitle = await page.title()
+        console.log(`[Scrape Debug] Page Title: ${pageTitle}`)
 
         // Extract items
         const results = await page.evaluate(() => {
@@ -102,14 +115,19 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     imageUrl
                 }
             }).filter(item => item !== null)
-        })
+        }) as ScraperResult[]
+
+        if (results.length === 0) {
+            const bodySnippet = await page.evaluate(() => document.body.innerText.slice(0, 500))
+            console.log(`[Scrape Debug] 0 items found. Body snippet: ${bodySnippet}`)
+        }
 
         // Filter negative keywords
         const filteredResults = results.filter(item => {
             if (!item) return false
             const titleLower = item.title.toLowerCase()
             return !negativeKeywords.some(neg => titleLower.includes(neg.toLowerCase()))
-        }) as ScraperResult[]
+        })
 
         return filteredResults
 
