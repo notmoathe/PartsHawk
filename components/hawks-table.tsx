@@ -12,10 +12,10 @@ interface Hawk {
 export function HawksTable({ hawks }: { hawks: Hawk[] }) {
     if (hawks.length === 0) {
         return (
-            <div className="text-center py-12">
-                <div className="text-4xl mb-4">🦅</div>
-                <p className="text-zinc-500 mb-2">No hawks yet</p>
-                <p className="text-zinc-600 text-sm">Create your first hawk to start monitoring</p>
+            <div className="text-center py-12 border-2 border-dashed border-zinc-900 rounded-lg">
+                <div className="text-4xl mb-4 grayscale opacity-50">🏎️</div>
+                <p className="text-zinc-400 font-bold uppercase tracking-wide mb-2">No Active Agents</p>
+                <p className="text-zinc-600 text-sm">Deploy your first agent to start scanning the market.</p>
             </div>
         )
     }
@@ -25,32 +25,39 @@ export function HawksTable({ hawks }: { hawks: Hawk[] }) {
             {hawks.map((hawk) => (
                 <div
                     key={hawk.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600/50 transition-colors"
+                    className="flex items-center justify-between p-5 rounded-none bg-black border border-zinc-800 hover:border-red-900/50 transition-colors group"
                 >
                     <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                            <p className="text-white font-medium">{hawk.keywords}</p>
+                        <div className="flex items-center gap-3 mb-2">
+                            <p className="text-white font-bold uppercase tracking-wide">{hawk.keywords}</p>
                             <Badge
                                 variant="secondary"
                                 className={hawk.status === 'active'
-                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                                    : 'bg-zinc-700/50 text-zinc-400'
+                                    ? 'bg-green-950/30 text-green-500 border-green-900/50 rounded-sm uppercase text-[10px] font-bold tracking-wider'
+                                    : 'bg-zinc-800 text-zinc-500 rounded-sm'
                                 }
                             >
-                                {hawk.status}
+                                {hawk.status === 'active' ? 'SCANNING' : 'PAUSED'}
                             </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-zinc-500">
-                            <span>Max: ${hawk.max_price}</span>
-                            <span className="capitalize">{hawk.source || 'ebay'}</span>
+                        <div className="flex items-center gap-4 text-xs font-mono text-zinc-500 uppercase">
+                            <span className="flex items-center gap-1">
+                                <span className="text-zinc-600">MAX:</span>
+                                <span className="text-zinc-300">${hawk.max_price}</span>
+                            </span>
+                            <span className="w-px h-3 bg-zinc-800"></span>
+                            <span className="flex items-center gap-1">
+                                <span className="text-zinc-600">SRC:</span>
+                                <span className="text-red-500">{hawk.source || 'ebay'}</span>
+                            </span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-zinc-700">
-                            Pause
+                    <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-700 h-8 text-xs font-bold uppercase">
+                            Edit
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                            Delete
+                        <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-red-500 hover:bg-red-950/10 border border-transparent hover:border-red-900/30 h-8 text-xs font-bold uppercase">
+                            Kill
                         </Button>
                     </div>
                 </div>

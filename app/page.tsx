@@ -1,25 +1,26 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Check } from 'lucide-react'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black text-white">
+    <main className="min-h-screen bg-black text-white selection:bg-red-500/30">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl">
+      <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-black/80 backdrop-blur-xl">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black tracking-tighter">
-            Part<span className="text-blue-500">Hawk</span>
+          <Link href="/" className="text-2xl font-black tracking-tighter uppercase italic">
+            Trace<span className="text-red-600">Motorsports</span>
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/login">
-              <Button variant="ghost" className="text-zinc-300 hover:text-white hover:bg-zinc-800">
-                Sign In
+              <Button variant="ghost" className="text-zinc-400 hover:text-white hover:bg-white/5">
+                Log In
               </Button>
             </Link>
             <Link href="/login">
-              <Button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold">
-                Get Started Free
+              <Button className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-wide skew-x-[-10deg]">
+                <span className="skew-x-[10deg]">Get Access</span>
               </Button>
             </Link>
           </div>
@@ -27,33 +28,37 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="container mx-auto text-center max-w-4xl">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-8">
+      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-red-600/20 blur-[120px] rounded-full pointer-events-none opacity-50"></div>
+
+        <div className="container mx-auto text-center max-w-5xl relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-950/30 border border-red-900/50 text-red-400 text-xs font-bold uppercase tracking-wider mb-8">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
             </span>
-            Now monitoring eBay & Facebook Marketplace
+            Live Market Intelligence
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-            Never Miss a Deal on Car Parts Again
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 uppercase italic leading-[0.9]">
+            Hunt Down <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-800">Rare Parts</span>
           </h1>
 
-          <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            PartHawk monitors eBay and Facebook Marketplace 24/7, instantly alerting you when parts matching your criteria appear at your price point.
+          <p className="text-xl text-zinc-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+            The elite tool for JDM locators and resellers. We scan eBay and Facebook Marketplace specifically for the parts others miss.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <Link href="/login">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-6 text-lg rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:scale-105">
-                Start Monitoring Free
+              <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white font-bold px-10 py-8 text-xl rounded-none skew-x-[-10deg] shadow-[0_0_30px_-5px_rgba(220,38,38,0.4)] hover:shadow-[0_0_50px_-10px_rgba(220,38,38,0.6)] transition-all">
+                <span className="skew-x-[10deg]">Start Hunting Free</span>
               </Button>
             </Link>
-            <Link href="#features">
-              <Button size="lg" variant="outline" className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white px-8 py-6 text-lg rounded-xl">
-                See How It Works
+            <Link href="#pricing">
+              <Button size="lg" variant="outline" className="border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-red-600/50 hover:text-white px-10 py-8 text-xl rounded-none skew-x-[-10deg]">
+                <span className="skew-x-[10deg]">View Memberships</span>
               </Button>
             </Link>
           </div>
@@ -61,105 +66,138 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 border-y border-zinc-800/50">
+      <section className="py-12 border-y border-white/5 bg-white/[0.02]">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-white/5">
             <div>
-              <div className="text-4xl font-bold text-white mb-2">24/7</div>
-              <div className="text-zinc-500">Monitoring</div>
+              <div className="text-5xl font-black text-white italic mb-1">0.5s</div>
+              <div className="text-red-500 font-bold uppercase text-sm tracking-wider">Latency</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-white mb-2">&lt;1min</div>
-              <div className="text-zinc-500">Alert Speed</div>
+              <div className="text-5xl font-black text-white italic mb-1">24/7</div>
+              <div className="text-red-500 font-bold uppercase text-sm tracking-wider">Surveillance</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-white mb-2">2+</div>
-              <div className="text-zinc-500">Marketplaces</div>
+              <div className="text-5xl font-black text-white italic mb-1">100%</div>
+              <div className="text-red-500 font-bold uppercase text-sm tracking-wider">Coverage</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-white mb-2">∞</div>
-              <div className="text-zinc-500">Hawks Per User</div>
+              <div className="text-5xl font-black text-white italic mb-1">PRO</div>
+              <div className="text-red-500 font-bold uppercase text-sm tracking-wider">Tools</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 px-6">
+      {/* Pricing Section */}
+      <section id="pricing" className="py-32 px-6 relative">
         <div className="container mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">How PartHawk Works</h2>
-            <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
-              Set up your monitoring criteria once, and we'll handle the rest.
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-black uppercase italic mb-4">Choose Your Class</h2>
+            <p className="text-zinc-400 text-lg">
+              Unlock faster scanning speeds and exclusive marketplaces.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl mb-4">
-                  🎯
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Free Tier */}
+            <Card className="bg-zinc-950 border-zinc-800 relative overflow-hidden group hover:border-zinc-700 transition-colors">
+              <CardHeader className="pt-10">
+                <CardTitle className="text-zinc-500 text-xl font-bold uppercase tracking-widest">Street Class</CardTitle>
+                <div className="mt-4 flex items-baseline">
+                  <span className="text-4xl font-black text-white">$0</span>
+                  <span className="text-zinc-500 ml-2">/month</span>
                 </div>
-                <CardTitle className="text-white text-xl">1. Create a Hawk</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Enter keywords like "G35 Coupe Headlight", set your max price, and choose which platforms to monitor.
-                </CardDescription>
               </CardHeader>
+              <CardContent>
+                <ul className="space-y-4 text-zinc-400 text-sm">
+                  <li className="flex items-center gap-3"><Check className="text-zinc-500 h-4 w-4" /> 1 Active Monitor</li>
+                  <li className="flex items-center gap-3"><Check className="text-zinc-500 h-4 w-4" /> 15-Minute Scan Interval</li>
+                  <li className="flex items-center gap-3"><Check className="text-zinc-500 h-4 w-4" /> eBay Only</li>
+                  <li className="flex items-center gap-3"><Check className="text-zinc-500 h-4 w-4" /> Email Alerts</li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Link href="/login" className="w-full">
+                  <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold h-12 uppercase tracking-wide">
+                    Start Free
+                  </Button>
+                </Link>
+              </CardFooter>
             </Card>
 
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-2xl mb-4">
-                  🔍
+            {/* Pro Tier (Featured) */}
+            <Card className="bg-zinc-950 border-red-600 relative overflow-hidden group shadow-[0_0_50px_-20px_rgba(220,38,38,0.3)] scale-105 z-10">
+              <div className="absolute top-0 inset-x-0 h-1 bg-red-600"></div>
+              <CardHeader className="pt-10">
+                <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-bold uppercase px-2 py-1 rounded-sm">Most Popular</div>
+                <CardTitle className="text-red-500 text-xl font-black uppercase tracking-widest italic">Club Spec</CardTitle>
+                <div className="mt-4 flex items-baseline">
+                  <span className="text-5xl font-black text-white">$29</span>
+                  <span className="text-zinc-500 ml-2">/month</span>
                 </div>
-                <CardTitle className="text-white text-xl">2. We Scan Constantly</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  Our system checks eBay and Facebook Marketplace every few minutes for new listings matching your criteria.
-                </CardDescription>
               </CardHeader>
+              <CardContent>
+                <div className="absolute inset-0 bg-red-600/5 pointer-events-none"></div>
+                <ul className="space-y-4 text-zinc-300 text-sm font-medium relative z-10">
+                  <li className="flex items-center gap-3"><Check className="text-red-500 h-5 w-5" /> 10 Active Monitors</li>
+                  <li className="flex items-center gap-3"><Check className="text-red-500 h-5 w-5" /> <strong>5-Minute</strong> Scan Interval</li>
+                  <li className="flex items-center gap-3"><Check className="text-red-500 h-5 w-5" /> eBay & <strong>Facebook Marketplace</strong></li>
+                  <li className="flex items-center gap-3"><Check className="text-red-500 h-5 w-5" /> SMS & Email Alerts</li>
+                  <li className="flex items-center gap-3"><Check className="text-red-500 h-5 w-5" /> Early Access Features</li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Link href="/login" className="w-full">
+                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white font-black h-12 uppercase tracking-wide shadow-lg">
+                    Go Club Spec
+                  </Button>
+                </Link>
+              </CardFooter>
             </Card>
 
-            <Card className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-700 transition-colors">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl mb-4">
-                  🔔
+            {/* Enterprise Tier */}
+            <Card className="bg-zinc-950 border-zinc-800 relative overflow-hidden group hover:border-zinc-700 transition-colors">
+              <CardHeader className="pt-10">
+                <CardTitle className="text-white text-xl font-black uppercase tracking-widest italic">Race Team</CardTitle>
+                <div className="mt-4 flex items-baseline">
+                  <span className="text-4xl font-black text-white">$99</span>
+                  <span className="text-zinc-500 ml-2">/month</span>
                 </div>
-                <CardTitle className="text-white text-xl">3. Get Instant Alerts</CardTitle>
-                <CardDescription className="text-zinc-400">
-                  The moment a matching part appears, you get notified via SMS or email. Be the first to grab the deal.
-                </CardDescription>
               </CardHeader>
+              <CardContent>
+                <ul className="space-y-4 text-zinc-400 text-sm">
+                  <li className="flex items-center gap-3"><Check className="text-white h-4 w-4" /> Unlimited Monitors</li>
+                  <li className="flex items-center gap-3"><Check className="text-white h-4 w-4" /> <strong>Instant</strong> Scan Interval</li>
+                  <li className="flex items-center gap-3"><Check className="text-white h-4 w-4" /> All Platforms + Forums</li>
+                  <li className="flex items-center gap-3"><Check className="text-white h-4 w-4" /> Webhook Integration</li>
+                  <li className="flex items-center gap-3"><Check className="text-white h-4 w-4" /> Priority Support</li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Link href="/login" className="w-full">
+                  <Button className="w-full bg-white hover:bg-zinc-200 text-black font-bold h-12 uppercase tracking-wide">
+                    Contact Sales
+                  </Button>
+                </Link>
+              </CardFooter>
             </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 px-6">
-        <div className="container mx-auto">
-          <div className="rounded-3xl bg-gradient-to-r from-blue-600 to-blue-800 p-12 md:p-20 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
-            <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-                Stop Refreshing. Start Finding.
-              </h2>
-              <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
-                Join car enthusiasts who use PartHawk to snipe the best deals before anyone else.
-              </p>
-              <Link href="/login">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-zinc-100 font-semibold px-10 py-6 text-lg rounded-xl shadow-lg transition-all hover:scale-105">
-                  Create Your First Hawk
-                </Button>
-              </Link>
-            </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-zinc-800/50">
-        <div className="container mx-auto text-center text-zinc-500">
-          <p>© 2024 PartHawk. Built for car enthusiasts.</p>
+      <footer className="py-12 px-6 border-t border-white/5">
+        <div className="container mx-auto flex flex-col items-center justify-center">
+          <p className="text-2xl font-black tracking-tighter uppercase italic mb-4">
+            Trace<span className="text-red-600">Motorsports</span>
+          </p>
+          <div className="text-zinc-600 text-sm flex gap-6">
+            <a href="#" className="hover:text-red-500 transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-red-500 transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-red-500 transition-colors">Contact</a>
+          </div>
+          <p className="text-zinc-700 text-xs mt-8">© 2024 Trace Motorsports LLC. All rights reserved.</p>
         </div>
       </footer>
     </main>

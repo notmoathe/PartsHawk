@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PartHawk | Real-time Car Part Monitoring",
-  description: "Never miss a deal on car parts again. Monitor eBay and Facebook Marketplace 24/7 for the parts you need.",
+  title: "Trace Motorsports | Elite JDM Parts Locator",
+  description: "The professional's tool for finding rare car parts. Monitor eBay and Facebook Marketplace in real-time.",
   icons: {
     icon: "/favicon.ico",
   },

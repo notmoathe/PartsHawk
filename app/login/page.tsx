@@ -42,36 +42,39 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black flex items-center justify-center p-6">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen bg-black flex items-center justify-center p-6 relative overflow-hidden">
+            {/* Ambient background */}
+            <div className="absolute top-[-50%] left-[-20%] w-[80%] h-[80%] bg-red-900/10 blur-[150px] rounded-full pointer-events-none"></div>
+
+            <div className="w-full max-w-md relative z-10">
                 {/* Logo */}
-                <div className="text-center mb-8">
-                    <Link href="/" className="text-3xl font-black tracking-tighter text-white">
-                        Part<span className="text-blue-500">Hawk</span>
+                <div className="text-center mb-10">
+                    <Link href="/" className="text-3xl font-black tracking-tighter text-white uppercase italic">
+                        Trace<span className="text-red-600">Motorsports</span>
                     </Link>
-                    <p className="text-zinc-500 mt-2">
-                        {isSignUp ? 'Create your account' : 'Welcome back'}
+                    <p className="text-zinc-500 mt-2 font-medium tracking-wide uppercase text-xs">
+                        {isSignUp ? 'Join the Team' : 'Member Access'}
                     </p>
                 </div>
 
                 {/* Card */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 backdrop-blur-xl">
+                <div className="bg-zinc-950 border border-zinc-800 p-8 shadow-2xl">
                     <form onSubmit={handleAuth} className="space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-zinc-300">Email</Label>
+                            <Label htmlFor="email" className="text-zinc-300 font-bold uppercase text-xs tracking-wider">Email</Label>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="you@example.com"
+                                placeholder="RACER@EXAMPLE.COM"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-blue-500 focus:ring-blue-500/20 h-12"
+                                className="bg-black border-zinc-800 text-white placeholder:text-zinc-700 ring-offset-black focus-visible:ring-red-600 h-12 uppercase"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-zinc-300">Password</Label>
+                            <Label htmlFor="password" className="text-zinc-300 font-bold uppercase text-xs tracking-wider">Password</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -79,46 +82,39 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-blue-500 focus:ring-blue-500/20 h-12"
+                                className="bg-black border-zinc-800 text-white placeholder:text-zinc-700 ring-offset-black focus-visible:ring-red-600 h-12"
                             />
                         </div>
 
                         {error && (
-                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                            <div className="p-3 bg-red-950/30 border border-red-900/50 text-red-500 text-xs font-bold uppercase">
                                 {error}
                             </div>
                         )}
 
                         {message && (
-                            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+                            <div className="p-3 bg-green-950/30 border border-green-900/50 text-green-500 text-xs font-bold uppercase">
                                 {message}
                             </div>
                         )}
 
                         <Button
                             type="submit"
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold h-12 text-base rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40"
+                            className="w-full bg-red-600 hover:bg-red-700 text-white font-black h-12 text-sm uppercase tracking-widest rounded-none"
                             disabled={loading}
                         >
-                            {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
+                            {loading ? 'PROCESSING...' : isSignUp ? 'CREATE ACCOUNT' : 'ENTER PADDOCK'}
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-8 text-center pt-6 border-t border-zinc-900">
                         <button
                             onClick={() => setIsSignUp(!isSignUp)}
-                            className="text-zinc-400 hover:text-white text-sm transition-colors"
+                            className="text-zinc-500 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors"
                         >
-                            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                            {isSignUp ? 'Already have an account? Log In' : "No account? Apply for Access"}
                         </button>
                     </div>
-                </div>
-
-                {/* Back Link */}
-                <div className="text-center mt-6">
-                    <Link href="/" className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">
-                        ← Back to home
-                    </Link>
                 </div>
             </div>
         </div>
