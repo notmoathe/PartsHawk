@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 // Vercel Cron max duration: 60s (Pro is higher)
-export const maxDuration = 60
+export const maxDuration = 300
 
 export async function GET(request: Request) {
     // Check for Vercel Cron Signature to secure it (Optional for now)

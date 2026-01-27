@@ -5,6 +5,7 @@ import { sendNotificationEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
+export const maxDuration = 300 // 5 Minutes for Pro
 export const maxDuration = 60 // Allow 60 seconds for scraping
 
 export async function POST(request: Request) {
