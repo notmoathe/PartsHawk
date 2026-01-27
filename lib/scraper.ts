@@ -28,7 +28,7 @@ export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keyword
     }
 
     // Return more items to ensure we find "new" ones that might be pushed down by sticky listings
-    return items.slice(0, 30)
+    return items.slice(0, 100)
 }
 
 export async function getBrowser() {
@@ -61,99 +61,88 @@ export async function getBrowser() {
 async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string, browserInstance?: any): Promise<ScraperResult[]> {
     let browser = browserInstance
     let weLaunchedBrowser = false
-    const MAX_RETRIES = 2
+    const MAX_PAGES = 3 // Deep Search
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            if (!browser || !browser.isConnected()) {
-                console.warn('[Scrape Debug] Browser disconnected or missing. Launching new instance...')
-                browser = await getBrowser()
-                weLaunchedBrowser = true
-            }
-            const page = await browser.newPage()
+    // Pagination Results Accumulator
+    const allItems = new Map<string, ScraperResult>()
 
-            // Set Viewport
-            await page.setViewport({ width: 1920, height: 1080 })
+    try {
+        if (!browser || !browser.isConnected()) {
+            console.warn('[Scrape Debug] Browser disconnected or missing. Launching new instance...')
+            browser = await getBrowser()
+            weLaunchedBrowser = true
+        }
+        const page = await browser.newPage()
 
-            // OPTIMIZATION: Block images, fonts, css to save memory and prevent crashes
-            await page.setRequestInterception(true)
-            page.on('request', (req: HTTPRequest) => {
-                const resourceType = req.resourceType()
-                if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
-                    req.abort()
-                } else {
-                    req.continue()
-                }
-            })
+        // Set Viewport
+        await page.setViewport({ width: 1920, height: 1080 })
 
-            // Set User-Agent
-            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        // OPTIMIZATION: Block images, fonts, css to save memory and prevent crashes
+        // await page.setRequestInterception(true)
+        // page.on('request', (req: HTTPRequest) => {
+        //     const resourceType = req.resourceType()
+        //     if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+        //         req.abort()
+        //     } else {
+        //         req.continue()
+        //     }
+        // })
 
-            // Add extra headers
-            await page.setExtraHTTPHeaders({
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            })
+        // Set User-Agent
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
-            // Construct search URL
+        // Add extra headers
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        })
+
+        // Pagination Loop
+        let currentPage = 1
+        while (currentPage <= MAX_PAGES) {
             const fullKeywords = vehicleString ? `${vehicleString} ${keywords}` : keywords
             const encodedKeywords = encodeURIComponent(fullKeywords)
-            const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
+            // Add _pgn for pagination
+            const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc&_pgn=${currentPage}`
 
-            console.log(`[Scrape Debug] Navigating to (Attempt ${attempt}): ${url}`)
+            console.log(`[Scrape Debug] Navigating to Page ${currentPage} (Attempt 1): ${url}`)
 
             // Robust Navigation with Retry
             let navSuccess = false
             for (let navAttempt = 0; navAttempt < 3; navAttempt++) {
                 try {
-                    // Switch to domcontentloaded to be less sensitive to network flakiness, then wait explicitly
                     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
                     navSuccess = true
                     break
                 } catch (navErr: any) {
                     console.warn(`[Scrape Debug] Navigation attempt ${navAttempt + 1} failed: ${navErr.message}`)
                     if (navErr.message.includes('detached') || navErr.message.includes('closed')) {
-                        // Wait a bit before retrying
                         await new Promise(r => setTimeout(r, 2000))
                         continue
                     }
-                    throw navErr // Rethrow other errors
+                    break
                 }
             }
 
             if (!navSuccess) {
-                throw new Error('Failed to navigate to page after multiple attempts')
+                console.warn(`[Scrape Debug] Failed to navigate to page ${currentPage}. Stopping pagination.`)
+                break
             }
 
-            // Small buffer to allow redirects/frame-loading to settle
-            await new Promise(r => setTimeout(r, 5000))
+            // Small buffer
+            await new Promise(r => setTimeout(r, 3000))
 
-            // Wait for items to likely appear - increased timeout and check for main container
+            // Wait for items
             try {
                 await page.waitForSelector('.s-item', { timeout: 15000 })
             } catch (e: any) {
-                console.warn(`[Scrape Debug] Timeout/Error waiting for .s-item: ${e.message}. Checking for alternatives...`)
-                // Try waiting for the main result list container
-                try { await page.waitForSelector('.srp-results', { timeout: 5000 }) } catch (e2) { }
+                console.warn(`[Scrape Debug] Timeout waiting for items on page ${currentPage}.`)
             }
-
-            // Check if we hit a captcha or block
-            let pageTitle = 'Unknown'
-            for (let i = 0; i < 3; i++) {
-                try {
-                    pageTitle = await page.title()
-                    break;
-                } catch (titleErr) {
-                    await new Promise(r => setTimeout(r, 1000))
-                }
-            }
-            console.log(`[Scrape Debug] Page Title: ${pageTitle}`)
 
             // Extract items
-            const results = await page.evaluate(() => {
+            const pageResults = await page.evaluate(() => {
                 const items = Array.from(document.querySelectorAll('.s-item'))
                 const standardResults = items.map(item => {
-                    // Skip "Shop on eBay" or "Results matching..." headers which share the class
                     if (item.querySelector('.s-item__title--has-tags')) return null
 
                     const titleEl = item.querySelector('.s-item__title')
@@ -164,7 +153,6 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     if (!titleEl || !priceEl || !linkEl) return null
 
                     const title = titleEl.textContent?.trim() || ''
-                    // Filter out "Shop on eBay" if it sneaks through
                     if (title === 'Shop on eBay') return null
 
                     const priceText = priceEl.textContent?.trim() || ''
@@ -174,16 +162,11 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
 
                     if (!listingId) return null
 
-                    // Clean price
                     const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
-                    // Clean Image URL
-                    // Even effectively blocked, the <img> tag usually exists with src
                     let finalImageUrl = imgEl?.getAttribute('src') || ''
-                    // Fallback: Check for data-src or other lazy load attributes if src is empty/blocked
                     if (!finalImageUrl) finalImageUrl = imgEl?.getAttribute('data-src') || ''
 
                     if (finalImageUrl.startsWith('/')) finalImageUrl = `https://www.ebay.com${finalImageUrl}`
-                    // If still empty, use a placeholder
                     if (!finalImageUrl) finalImageUrl = 'https://placehold.co/400x300?text=No+Image'
 
                     return {
@@ -193,75 +176,90 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                         url: `https://www.ebay.com/itm/${listingId}`,
                         imageUrl: finalImageUrl
                     }
-                }).filter(item => item !== null)
+                }).filter(item => item !== null) as ScraperResult[]
 
                 if (standardResults.length > 0) return standardResults;
 
-                // Fallback: Try finding links that look like items
-                // This captures cases where the class names might differ (e.g. mobile view)
-                const fallbackLinks = Array.from(document.querySelectorAll('a[href*="/itm/"]'));
+                // Fallback: Try finding links that look like items (for different layouts)
+                const fallbackLinks = Array.from(document.querySelectorAll('a[href*="/itm/"]'))
                 return fallbackLinks.map(link => {
-                    const url = link.getAttribute('href') || '';
-                    const idMatch = url.match(/\/itm\/(\d+)/);
-                    if (!idMatch) return null;
+                    const url = link.getAttribute('href') || ''
+                    const idMatch = url.match(/\/itm\/(\d+)/)
+                    if (!idMatch) return null
 
                     // Try to find title/price relative to the link
-                    // This is a naive heuristic but better than 0 results
-                    const container = link.closest('li') || link.closest('div');
-                    const title = container?.innerText.split('\n')[0] || 'Unknown Item';
-                    const priceText = container?.innerText.match(/\$[\d,.]+/)?.[0] || '0';
-                    const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-                    const imageUrl = container?.querySelector('img')?.getAttribute('src') || '';
+                    const container = link.closest('li') || link.closest('div')
+                    const title = container?.innerText.split('\n')[0] || 'Unknown Item'
+                    const priceText = container?.innerText.match(/\$[\d,.]+/)?.[0] || '0'
+                    const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
+                    const imageUrl = container?.querySelector('img')?.getAttribute('src') || ''
 
                     return {
                         listingId: idMatch[1],
-                        title: title.substring(0, 100), // Safety cap
+                        title: title.substring(0, 100),
                         price: price || 0,
-                        url: url,
-                        imageUrl: imageUrl
+                        url,
+                        imageUrl
                     }
                 }).filter(i => {
-                    if (!i || i.price <= 0) return false;
-                    // strict junk filter
-                    const lowerTitle = i.title.toLowerCase();
-                    if (lowerTitle.includes('shop on ebay')) return false;
-                    if (i.price === 20.00 && lowerTitle.includes('shop')) return false;
-                    return true;
-                }).slice(0, 10); // Limit fallbacks
-            }) as ScraperResult[]
+                    if (!i || i.price <= 0) return false
+                    const lowerTitle = i.title.toLowerCase()
+                    if (lowerTitle.includes('shop on ebay')) return false
+                    return true
+                }).slice(0, 10) // Limit fallbacks
+            })
 
-            if (results.length === 0) {
-                try {
-                    const bodySnippet = await page.evaluate(() => document.body.innerText.slice(0, 500))
-                    console.log(`[Scrape Debug] 0 items found. Body snippet: ${bodySnippet}`)
-                } catch (e) {
-                    console.log('[Scrape Debug] 0 items found (and could not read body)')
+            if (pageResults.length === 0) {
+                const pageTitle = await page.title()
+                const bodySnippet = await page.evaluate(() => document.body.innerText.slice(0, 300).replace(/\n/g, ' '))
+                console.warn(`[Scrape Debug] 0 items found on page ${currentPage}. Title: "${pageTitle}" Body: "${bodySnippet}..."`)
+
+                if (currentPage > 1) break;
+            }
+
+            console.log(`[Scrape Debug] Page ${currentPage} found ${pageResults.length} items.`)
+
+            // Deduplicate and Add
+            let newOnPage = 0
+            for (const item of pageResults) {
+                if (!item) continue
+                if (!allItems.has(item.listingId)) {
+                    allItems.set(item.listingId, item)
+                    newOnPage++
                 }
             }
 
-            // Filter negative keywords
-            const filteredResults = results.filter(item => {
-                if (!item) return false
-                const titleLower = item.title.toLowerCase()
-                return !negativeKeywords.some(neg => titleLower.includes(neg.toLowerCase()))
-            })
-
-            return filteredResults // SUCCESS
-
-        } catch (error: any) {
-            console.error(`eBay Scraping attempt ${attempt} failed:`, error.message)
-            if (attempt === MAX_RETRIES) {
-                return []
+            if (newOnPage === 0 && currentPage > 1) {
+                console.log(`[Scrape Debug] No new unique items on page ${currentPage}. Stopping.`)
+                break
             }
-            // Retry delay
-            await new Promise(resolve => setTimeout(resolve, 2000))
-        } finally {
-            if (browser && weLaunchedBrowser) {
-                await browser.close()
+
+            currentPage++
+            // Delay between pages
+            if (currentPage <= MAX_PAGES) {
+                await new Promise(r => setTimeout(r, Math.random() * 2000 + 1000))
             }
         }
+
+        const results = Array.from(allItems.values())
+
+        // Filter negative keywords
+        const filteredResults = results.filter(item => {
+            if (!item) return false
+            const titleLower = item.title.toLowerCase()
+            return !negativeKeywords.some(neg => titleLower.includes(neg.toLowerCase()))
+        })
+
+        return filteredResults
+
+    } catch (error: any) {
+        console.error(`eBay Scraping failed:`, error.message)
+        return []
+    } finally {
+        if (browser && weLaunchedBrowser) {
+            await browser.close()
+        }
     }
-    return []
 }
 
 async function scrapeFacebook(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
