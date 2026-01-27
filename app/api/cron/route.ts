@@ -144,4 +144,14 @@ export async function GET(request: Request) {
         scanned: scannedCount,
         skipped: results.length - scannedCount
     })
+
+} catch (criticalError: any) {
+    console.error('[Cron] Critical Failure:', criticalError)
+    // Return 200 even on critical failure so cron-job.org doesn't disable the job
+    // But log the error in the body
+    return NextResponse.json({
+        success: false,
+        error: criticalError.message || 'Unknown critical error'
+    }, { status: 200 })
+}
 }
