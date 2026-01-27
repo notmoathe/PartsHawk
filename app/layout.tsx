@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
+const metadata: Metadata = {
   title: "Trace Motorsports | Elite JDM Parts Locator",
   description: "The professional's tool for finding rare car parts. Monitor eBay and Facebook Marketplace in real-time.",
   icons: {
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 };
 
 import { Analytics } from "@vercel/analytics/react"
+import { Toaster } from 'sonner'
 
 export default function RootLayout({
   children,
@@ -36,6 +37,7 @@ export default function RootLayout({
       >
         {children}
         <Analytics />
+        <Toaster position="top-center" richColors theme="dark" />
       </body>
     </html>
   );

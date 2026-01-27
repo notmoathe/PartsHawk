@@ -12,6 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { createHawk } from '@/lib/actions'
+import { toast } from 'sonner'
 
 export function HawkForm() {
     const [loading, setLoading] = useState(false)
@@ -20,12 +21,21 @@ export function HawkForm() {
         event.preventDefault()
         setLoading(true)
         const formData = new FormData(event.currentTarget)
+        const promise = createHawk(formData)
+
+        toast.promise(promise, {
+            loading: 'Initializing agent...',
+            success: () => {
+                (event.target as HTMLFormElement).reset()
+                return 'Agent deployed successfully! Scanning will begin shortly.'
+            },
+            error: (err) => err.message || 'Failed to deploy agent'
+        })
+
         try {
-            await createHawk(formData)
-                ; (event.target as HTMLFormElement).reset()
-            alert('Agent deployed successfully!')
-        } catch (e: any) {
-            alert(e.message || 'Failed to deploy agent')
+            await promise
+        } catch (e) {
+            // Handled by toast.promise
         } finally {
             setLoading(false)
         }

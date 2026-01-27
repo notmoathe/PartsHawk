@@ -14,6 +14,15 @@ export async function createHawk(formData: FormData) {
     if (!user) {
         throw new Error('You must be logged in to deploy an agent.')
     }
+
+    const keywords = formData.get('keywords') as string
+    const maxPrice = formData.get('max_price') ? parseFloat(formData.get('max_price') as string) : null
+    const condition = formData.get('condition') as string
+    const negativeKeywords = formData.get('negative_keywords') as string
+    const source = (formData.get('source') as string) || 'ebay'
+
+    // SUBSCRIPTION CHECKS
+    const tier = getUserTier(user.email)
     // "Setup Supabase Client (I will provide API keys later)."
     // I can't really test this without the keys. 
 

@@ -66,9 +66,13 @@ export default async function DashboardPage() {
                         <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter mb-1">Command Center</h1>
                         <p className="text-zinc-500 font-medium">Manage your automated search agents.</p>
                     </div>
-                    {isFree && (
+                    {isFree ? (
                         <Button className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-bold uppercase tracking-wide border-0 shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] animate-pulse">
                             Upgrade to Club Spec
+                        </Button>
+                    ) : (
+                        <Button variant="outline" className="border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wide hover:bg-zinc-900 hover:text-white pointer-events-none opacity-50">
+                            {tier === 'owner' ? 'System Override Active' : 'Club Spec Active'}
                         </Button>
                     )}
                 </div>
