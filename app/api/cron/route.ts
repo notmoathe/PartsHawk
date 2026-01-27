@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     // For now, fetching all active hawks is fine.
     const { data: hawks, error } = await supabaseAdmin
         .from('hawks')
-        .select('*, users:user_id ( email )') // Join user to get email
+        .select('*, users:user_id ( email ), webhook_url, vehicle_string') // Join user to get email
         .eq('status', 'active')
 
     if (error || !hawks) {
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     console.log(`[Cron] Found ${hawks.length} active hawks. Checking schedules...`)
 
     const now = new Date()
-    const promises = hawks.map(async (hawk: { id: string, last_scanned_at: string | null, scan_interval: number | null, keywords: string, source: any, max_price: number | null, negative_keywords: string | null, users: { email: string } | null }) => {
+    const promises = hawks.map(async (hawk: { id: string, last_scanned_at: string | null, scan_interval: number | null, keywords: string, source: any, max_price: number | null, negative_keywords: string | null, users: { email: string } | null, webhook_url: string | null, vehicle_string: string | null }) => {
         // Check Interval
         const lastScanned = hawk.last_scanned_at ? new Date(hawk.last_scanned_at) : new Date(0)
         const intervalMinutes = hawk.scan_interval || 60
@@ -57,7 +57,8 @@ export async function GET(request: Request) {
                 hawk.source,
                 hawk.keywords,
                 hawk.max_price || 1000000,
-                hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : []
+                hawk.negative_keywords ? hawk.negative_keywords.split(',').map((s: string) => s.trim()) : [],
+                hawk.vehicle_string || undefined
             )
 
             // Save Results
@@ -77,6 +78,28 @@ export async function GET(request: Request) {
                 // Send Email
                 if (hawk.users?.email) {
                     await sendNotificationEmail(hawk.users.email, hawk.keywords, insertData)
+                }
+
+                // Send Webhook (Discord/Slack)
+                if (hawk.webhook_url) {
+                    try {
+                        await fetch(hawk.webhook_url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                content: `🦅 **PartHawk Alert**\nFound ${results.length} new items for **${hawk.keywords}**\n${hawk.vehicle_string ? `*Vehicle: ${hawk.vehicle_string}*\n` : ''}`,
+                                embeds: results.slice(0, 10).map(r => ({
+                                    title: r.title,
+                                    url: r.url,
+                                    description: `Price: $${r.price}\nSource: ${hawk.source}`,
+                                    thumbnail: { url: r.imageUrl },
+                                    color: 14548992 // Red
+                                }))
+                            })
+                        })
+                    } catch (webhookErr) {
+                        console.error('[Cron] Webhook failed:', webhookErr)
+                    }
                 }
             }
 

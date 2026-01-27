@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { createHawk } from '@/lib/actions'
 import { toast } from 'sonner'
+import { VehicleSelect } from './vehicle-select'
 
 export function HawkForm() {
     const [loading, setLoading] = useState(false)
@@ -145,6 +146,23 @@ export function HawkForm() {
                     </SelectContent>
                 </Select>
                 <p className="text-[10px] text-zinc-600">Subject to plan limits. Higher tiers unlock faster scanning.</p>
+            </div>
+
+            {/* My Garage Feature */}
+            <VehicleSelect onVehicleChange={() => { }} />
+
+            {/* Webhook Feature */}
+            <div className="space-y-2 pb-2">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="webhook_url" className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Discord / Slack Webhook (Optional)</Label>
+                    <span className="text-[10px] text-red-500 font-mono uppercase bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50">Race Team Exclusive</span>
+                </div>
+                <Input
+                    id="webhook_url"
+                    name="webhook_url"
+                    placeholder="https://discord.com/api/webhooks/..."
+                    className="bg-black border-zinc-800 text-white placeholder:text-zinc-700 h-11 focus-visible:ring-red-600 ring-offset-black font-mono text-xs"
+                />
             </div>
 
             <div className="space-y-2 pb-2">

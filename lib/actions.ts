@@ -19,6 +19,8 @@ export async function createHawk(formData: FormData) {
         const negativeKeywords = formData.get('negative_keywords') as string
         const source = (formData.get('source') as string) || 'ebay'
         const scanInterval = parseInt(formData.get('scan_interval') as string) || 60
+        const vehicleString = formData.get('vehicle_string') as string
+        const webhookUrl = formData.get('webhook_url') as string
 
         // Validate Interval based on Tier
         const tier = getUserTier(user.email)
@@ -35,7 +37,9 @@ export async function createHawk(formData: FormData) {
             negative_keywords: negativeKeywords,
             source,
             status: 'active',
-            scan_interval: scanInterval
+            scan_interval: scanInterval,
+            vehicle_string: vehicleString || null,
+            webhook_url: webhookUrl || null
         }).select().single()
 
         if (error) {

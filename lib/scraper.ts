@@ -8,12 +8,12 @@ import { ScraperResult } from './types'
 const isProduction = process.env.NODE_ENV === 'production'
 
 // Main entry point
-export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
+export async function scrape(source: 'ebay' | 'facebook' | 'craigslist', keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
     if (source === 'ebay') {
-        return scrapeEbay(keywords, maxPrice, negativeKeywords)
+        return scrapeEbay(keywords, maxPrice, negativeKeywords, vehicleString)
     }
     if (source === 'facebook') {
-        return scrapeFacebook(keywords, maxPrice, negativeKeywords)
+        return scrapeFacebook(keywords, maxPrice, negativeKeywords, vehicleString)
     }
     return []
 }
@@ -37,7 +37,7 @@ async function getBrowser() {
     }
 }
 
-async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
+async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
     let browser = null
     try {
         browser = await getBrowser()
@@ -61,7 +61,8 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         // _udhi = max price
         // _sop = 10 (newly listed)
         // Construct search URL
-        const encodedKeywords = encodeURIComponent(keywords)
+        const fullKeywords = vehicleString ? `${vehicleString} ${keywords}` : keywords
+        const encodedKeywords = encodeURIComponent(fullKeywords)
         const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
 
         console.log(`[Scrape Debug] Navigating to: ${url}`)
@@ -181,7 +182,7 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
     }
 }
 
-async function scrapeFacebook(keywords: string, maxPrice: number, negativeKeywords: string[] = []): Promise<ScraperResult[]> {
+async function scrapeFacebook(keywords: string, maxPrice: number, negativeKeywords: string[] = [], vehicleString?: string): Promise<ScraperResult[]> {
     // MOCK: Real FB scraping requires complex auth/proxy handling.
     // Returning a mock result to demonstrate the UI capability.
     console.log(`[MOCK] Scraping Facebook Marketplace for ${keywords}...`)
