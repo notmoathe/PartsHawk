@@ -139,77 +139,77 @@ export default async function DashboardPage() {
                     </Card>
                 </div>
 
-            </div>
 
-            {/* Webhook Status (for Owner/Club) */}
-            {(tier === 'owner' || tier === 'club') && (
-                <div className="mb-8">
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Race Team Uplink Active</span>
-                        </div>
-                        <span className="text-[10px] text-zinc-600 font-mono">DISCORD / SLACK READY</span>
-                    </div>
-                </div>
-            )}
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Hawks Table & Results */}
-                <div className="lg:col-span-2 space-y-8">
-
-                    {/* 1. Results Feed */}
-                    <FoundListings listings={recentFinds || []} />
-
-                    {/* 2. Agents List */}
-                    <Card className="bg-zinc-950 border-zinc-800">
-                        <CardHeader className="border-b border-zinc-900 pb-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-white text-xl font-bold uppercase tracking-wide">Your Agents</CardTitle>
-                                </div>
-                                <Badge variant="outline" className={`border-red-900 bg-red-950/20 ${activeHawks >= limits.maxHawks ? 'text-red-500' : 'text-zinc-500'}`}>
-                                    {tier === 'owner' ? 'UNLIMITED' : `${activeHawks} / ${limits.maxHawks} USED`}
-                                </Badge>
+                {/* Webhook Status (for Owner/Club) */}
+                {(tier === 'owner' || tier === 'club') && (
+                    <div className="mb-8">
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                                <span className="text-zinc-400 font-bold uppercase text-xs tracking-wide">Race Team Uplink Active</span>
                             </div>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <HawksTable hawks={hawks || []} />
-                        </CardContent>
-                    </Card>
-                </div>
+                            <span className="text-[10px] text-zinc-600 font-mono">DISCORD / SLACK READY</span>
+                        </div>
+                    </div>
+                )}
 
-                {/* Add Hawk Form */}
-                <div className="lg:col-span-1">
-                    <Card className={`bg-zinc-950 border-zinc-800 sticky top-24 border-t-4 ${activeHawks >= limits.maxHawks && tier !== 'owner' ? 'border-t-zinc-800 opacity-50 pointer-events-none' : 'border-t-red-600'} shadow-xl transition-all`}>
-                        <CardHeader>
-                            <CardTitle className="text-white text-xl font-bold uppercase tracking-wide outline-none">Deploy Agent</CardTitle>
-                            <CardDescription className="text-zinc-500">
-                                Configure new search parameters
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="relative">
-                            <HawkForm />
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Hawks Table & Results */}
+                    <div className="lg:col-span-2 space-y-8">
 
-                            {/* Lock Overlay for Free Tier limit */}
-                            {activeHawks >= limits.maxHawks && tier !== 'owner' && (
-                                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
-                                    <div className="text-center p-6">
-                                        <Lock className="w-12 h-12 text-zinc-500 mx-auto mb-4" />
-                                        <h3 className="text-white font-bold uppercase mb-2">Agent Limit Reached</h3>
-                                        <p className="text-zinc-400 text-sm mb-4">Upgrade to Club Spec to deploy up to 10 agents.</p>
-                                        <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase w-full">
-                                            <Link href="/#pricing">Upgrade Now</Link>
-                                        </Button>
+                        {/* 1. Results Feed */}
+                        <FoundListings listings={recentFinds || []} />
+
+                        {/* 2. Agents List */}
+                        <Card className="bg-zinc-950 border-zinc-800">
+                            <CardHeader className="border-b border-zinc-900 pb-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-white text-xl font-bold uppercase tracking-wide">Your Agents</CardTitle>
                                     </div>
+                                    <Badge variant="outline" className={`border-red-900 bg-red-950/20 ${activeHawks >= limits.maxHawks ? 'text-red-500' : 'text-zinc-500'}`}>
+                                        {tier === 'owner' ? 'UNLIMITED' : `${activeHawks} / ${limits.maxHawks} USED`}
+                                    </Badge>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <HawksTable hawks={hawks || []} />
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Add Hawk Form */}
+                    <div className="lg:col-span-1">
+                        <Card className={`bg-zinc-950 border-zinc-800 sticky top-24 border-t-4 ${activeHawks >= limits.maxHawks && tier !== 'owner' ? 'border-t-zinc-800 opacity-50 pointer-events-none' : 'border-t-red-600'} shadow-xl transition-all`}>
+                            <CardHeader>
+                                <CardTitle className="text-white text-xl font-bold uppercase tracking-wide outline-none">Deploy Agent</CardTitle>
+                                <CardDescription className="text-zinc-500">
+                                    Configure new search parameters
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="relative">
+                                <HawkForm />
+
+                                {/* Lock Overlay for Free Tier limit */}
+                                {activeHawks >= limits.maxHawks && tier !== 'owner' && (
+                                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
+                                        <div className="text-center p-6">
+                                            <Lock className="w-12 h-12 text-zinc-500 mx-auto mb-4" />
+                                            <h3 className="text-white font-bold uppercase mb-2">Agent Limit Reached</h3>
+                                            <p className="text-zinc-400 text-sm mb-4">Upgrade to Club Spec to deploy up to 10 agents.</p>
+                                            <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase w-full">
+                                                <Link href="/#pricing">Upgrade Now</Link>
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </div>
-        </div >
     )
 }
