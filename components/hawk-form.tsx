@@ -27,6 +27,8 @@ export function HawkForm() {
             loading: 'Initializing agent...',
             success: () => {
                 (event.target as HTMLFormElement).reset()
+                // Force a refresh to see the new data since we removed redirect()
+                window.location.href = '/dashboard'
                 return 'Agent deployed successfully! Scanning will begin shortly.'
             },
             error: (err) => err.message || 'Failed to deploy agent'

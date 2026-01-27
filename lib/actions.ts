@@ -64,5 +64,8 @@ export async function createHawk(formData: FormData) {
     }
 
     revalidatePath('/dashboard')
-    redirect('/dashboard')
+    // Removing redirect to prevent "Server Components render" error if the unexpected happens during render
+    // The client form naturally resets. We can let the user stay or manually nav.
+    // Actually, redirecting is better UX, but if it crashes...
+    // Let's rely on revalidatePath and let the Client Component handle success state.
 }
