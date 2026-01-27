@@ -8,22 +8,26 @@ import { Badge } from '@/components/ui/badge'
 import { getUserTier, getTierLimits } from '@/lib/subscription'
 import { Lock } from 'lucide-react'
 
+import { FoundListings } from '@/components/found-listings'
+
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Fetch Hawks
     const { data: hawks } = await supabase
         .from('hawks')
         .select('*')
         .order('created_at', { ascending: false })
 
+    // Fetch Recent Finds (Limit 20 for feed)
     const { data: recentFinds } = await supabase
         .from('found_listings')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(20)
 
     const activeHawks = hawks?.filter(h => h.status === 'active').length || 0
     const totalFinds = recentFinds?.length || 0
@@ -132,8 +136,13 @@ export default async function DashboardPage() {
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Hawks Table */}
-                    <div className="lg:col-span-2">
+                    {/* Hawks Table & Results */}
+                    <div className="lg:col-span-2 space-y-8">
+
+                        {/* 1. Results Feed */}
+                        <FoundListings listings={recentFinds || []} />
+
+                        {/* 2. Agents List */}
                         <Card className="bg-zinc-950 border-zinc-800">
                             <CardHeader className="border-b border-zinc-900 pb-4">
                                 <div className="flex items-center justify-between">
