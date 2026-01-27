@@ -1,15 +1,21 @@
 'use server'
 
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 
 export async function createHawk(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('You must be logged in to create a hawk')
+    }
+
     const keywords = formData.get('keywords') as string
     const maxPrice = parseFloat(formData.get('max_price') as string)
     const negativeKeywords = formData.get('negative_keywords') as string
     const source = formData.get('source') as string || 'ebay'
 
-    // TODO: Get real user ID from auth
     // const { data: { user } } = await supabase.auth.getUser()
     // if (!user) throw new Error('Not authenticated')
 

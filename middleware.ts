@@ -1,30 +1,52 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-    const res = NextResponse.next()
-    const supabase = createMiddlewareClient({ req, res })
+export async function middleware(request: NextRequest) {
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    })
+
+    // Create an unmodified response for the initial client
+    // We will modify this response with cookie updates if necessary
+
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return request.cookies.getAll()
+                },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                    response = NextResponse.next({
+                        request,
+                    })
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        response.cookies.set(name, value, options)
+                    )
+                },
+            },
+        }
+    )
 
     const {
-        data: { session },
-    } = await supabase.auth.getSession()
+        data: { user },
+    } = await supabase.auth.getUser()
 
     // Protect dashboard route
-    if (req.nextUrl.pathname.startsWith('/dashboard')) {
-        if (!session) {
-            return NextResponse.redirect(new URL('/login', req.url))
-        }
+    if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
+        return NextResponse.redirect(new URL('/login', request.url))
     }
 
     // Redirect logged in users away from login
-    if (req.nextUrl.pathname.startsWith('/login')) {
-        if (session) {
-            return NextResponse.redirect(new URL('/dashboard', req.url))
-        }
+    if (request.nextUrl.pathname.startsWith('/login') && user) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    return res
+    return response
 }
 
 export const config = {
