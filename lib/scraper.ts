@@ -37,7 +37,15 @@ async function getBrowser() {
     if (isProduction) {
         // Vercel / Production configuration
         return puppeteer.launch({
-            args: chromium.args,
+            args: [
+                ...chromium.args,
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--no-zygote',
+                '--single-process' // Critical for some Vercel envs
+            ],
             executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'),
             headless: true,
         })
@@ -81,8 +89,8 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         const url = `https://www.ebay.com/sch/i.html?_nkw=${encodedKeywords}&_sacat=0&_udhi=${maxPrice}&_sop=10&rt=nc`
 
         console.log(`[Scrape Debug] Navigating to: ${url}`)
-        // Switch to networkidle2 to ensure AJAX results load
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 })
+        // Switch to domcontentloaded to avoid hanging on tracking scripts/ads
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
 
         // Wait for items to likely appear - increased timeout and check for main container
         try {
