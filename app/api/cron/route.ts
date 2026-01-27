@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     console.log(`[Cron] Found ${hawks.length} active hawks. Checking schedules...`)
 
     const now = new Date()
-    const promises = hawks.map(async (hawk: { id: string, last_scanned_at: string | null, scan_interval: number | null, keywords: string, source: any, max_price: number | null, negative_keywords: string | null, users: { email: string } | null, webhook_url: string | null, vehicle_string: string | null }) => {
+    const promises = hawks.map(async (hawk: { id: string, user_id: string, last_scanned_at: string | null, scan_interval: number | null, keywords: string, source: any, max_price: number | null, negative_keywords: string | null, users: { email: string } | null, webhook_url: string | null, vehicle_string: string | null }) => {
         // Check Interval
         const lastScanned = hawk.last_scanned_at ? new Date(hawk.last_scanned_at) : new Date(0)
         const intervalMinutes = hawk.scan_interval || 60
