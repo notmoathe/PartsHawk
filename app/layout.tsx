@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Trace Motorsports | Elite JDM Parts Locator",
   description: "The professional's tool for finding rare car parts. Monitor eBay and Facebook Marketplace in real-time.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo.png",
   },
 };
 

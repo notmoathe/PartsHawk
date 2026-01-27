@@ -197,7 +197,7 @@ export default function Home() {
             <a href="#" className="hover:text-red-500 transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-red-500 transition-colors">Contact</a>
           </div>
-          <p className="text-zinc-700 text-xs mt-8">© 2024 Trace Motorsports LLC. All rights reserved.</p>
+          <p className="text-zinc-700 text-xs mt-8">© 2026 Trace Motorsports. All rights reserved.</p>
         </div>
       </footer>
     </main>
