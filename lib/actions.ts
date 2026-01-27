@@ -51,3 +51,16 @@ export async function createHawk(formData: FormData) {
         return { success: false, error: e.message || 'Unknown server error' }
     }
 }
+
+export async function deleteHawk(hawkId: string) {
+    'use server'
+
+    const supabase = await createClient()
+    const { error } = await supabase.from('hawks').delete().eq('id', hawkId)
+
+    if (error) {
+        throw new Error(error.message)
+    }
+
+    revalidatePath('/dashboard')
+}

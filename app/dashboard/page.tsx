@@ -170,7 +170,9 @@ export default async function DashboardPage() {
                                             <Lock className="w-12 h-12 text-zinc-500 mx-auto mb-4" />
                                             <h3 className="text-white font-bold uppercase mb-2">Agent Limit Reached</h3>
                                             <p className="text-zinc-400 text-sm mb-4">Upgrade to Club Spec to deploy up to 10 agents.</p>
-                                            <Button className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase w-full">Upgrade Now</Button>
+                                            <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-bold uppercase w-full">
+                                                <Link href="/#pricing">Upgrade Now</Link>
+                                            </Button>
                                         </div>
                                     </div>
                                 )}

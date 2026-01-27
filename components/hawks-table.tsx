@@ -1,5 +1,8 @@
+'use client'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DeleteHawkButton } from '@/components/delete-hawk-button'
 
 interface Hawk {
     id: string
@@ -53,12 +56,15 @@ export function HawksTable({ hawks }: { hawks: Hawk[] }) {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-700 h-8 text-xs font-bold uppercase">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-zinc-500 hover:text-white hover:bg-zinc-900 border border-transparent hover:border-zinc-700 h-8 text-xs font-bold uppercase"
+                            onClick={() => alert('Editing coming soon! Kill and re-deploy for now.')}
+                        >
                             Edit
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-red-500 hover:bg-red-950/10 border border-transparent hover:border-red-900/30 h-8 text-xs font-bold uppercase">
-                            Kill
-                        </Button>
+                        <DeleteHawkButton id={hawk.id} />
                     </div>
                 </div>
             ))}
