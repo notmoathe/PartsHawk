@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 import { getUserTier, getTierLimits } from '@/lib/subscription'
-import { redirect } from 'next/navigation'
 
 export async function createHawk(formData: FormData) {
     'use server'

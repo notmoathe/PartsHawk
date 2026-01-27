@@ -18,7 +18,14 @@ import { updateHawk } from '@/lib/actions'
 import { Pencil, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-export function EditHawkDialog({ hawk }: { hawk: any }) {
+interface Hawk {
+    id: string
+    keywords: string
+    max_price: number | null
+    scan_interval?: number
+}
+
+export function EditHawkDialog({ hawk }: { hawk: Hawk }) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
 

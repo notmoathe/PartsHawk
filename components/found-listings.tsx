@@ -59,6 +59,7 @@ export function FoundListings({ listings }: { listings: any[] }) {
                                 {/* Image */}
                                 <div className="relative w-24 h-24 shrink-0 bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800">
                                     {item.image_url ? (
+                                        /* eslint-disable-next-line @next/next/no-img-element */
                                         <img
                                             src={item.image_url}
                                             alt={item.title}
