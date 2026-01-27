@@ -24,6 +24,10 @@ export function HawkForm() {
 
         // 1. Create the Hawk (Fast)
         const promise = createHawk(formData).then(async (result) => {
+            if (!result.success) {
+                throw new Error(result.error)
+            }
+
             // 2. Trigger the Scraper (Background - via Client Fetch)
             // We do this here so it runs separately from the Server Action transaction
             if (result?.hawk) {
