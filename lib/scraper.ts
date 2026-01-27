@@ -66,10 +66,21 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         browser = await getBrowser()
         const page = await browser.newPage()
 
-        // Set Viewport to Desktop to ensure standard classes
+        // Set Viewport
         await page.setViewport({ width: 1920, height: 1080 })
 
-        // Set a realistic User-Agent to avoid detection
+        // OPTIMIZATION: Block images, fonts, css to save memory and prevent crashes
+        await page.setRequestInterception(true)
+        page.on('request', (req) => {
+            const resourceType = req.resourceType()
+            if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+                req.abort()
+            } else {
+                req.continue()
+            }
+        })
+
+        // Set User-Agent
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
         // Add extra headers
@@ -140,8 +151,14 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                 // Clean price
                 const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
                 // Clean Image URL
+                // Even effectively blocked, the <img> tag usually exists with src
                 let finalImageUrl = imgEl?.getAttribute('src') || ''
+                // Fallback: Check for data-src or other lazy load attributes if src is empty/blocked
+                if (!finalImageUrl) finalImageUrl = imgEl?.getAttribute('data-src') || ''
+
                 if (finalImageUrl.startsWith('/')) finalImageUrl = `https://www.ebay.com${finalImageUrl}`
+                // If still empty, use a placeholder
+                if (!finalImageUrl) finalImageUrl = 'https://placehold.co/400x300?text=No+Image'
 
                 return {
                     listingId,
