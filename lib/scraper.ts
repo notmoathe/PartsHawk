@@ -147,7 +147,14 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     url: url,
                     imageUrl: imageUrl
                 }
-            }).filter(i => i !== null && i.price > 0).slice(0, 10); // Limit fallbacks
+            }).filter(i => {
+                if (!i || i.price <= 0) return false;
+                // strict junk filter
+                const lowerTitle = i.title.toLowerCase();
+                if (lowerTitle.includes('shop on ebay')) return false;
+                if (i.price === 20.00 && lowerTitle.includes('shop')) return false;
+                return true;
+            }).slice(0, 10); // Limit fallbacks
         }) as ScraperResult[]
 
         if (results.length === 0) {
