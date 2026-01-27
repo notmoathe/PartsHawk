@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "The professional's tool for finding rare car parts. Monitor eBay and Facebook Marketplace in real-time.",
   icons: {
     icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
