@@ -43,6 +43,9 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         browser = await getBrowser()
         const page = await browser.newPage()
 
+        // Set Viewport to Desktop to ensure standard classes
+        await page.setViewport({ width: 1920, height: 1080 })
+
         // Set a realistic User-Agent to avoid detection
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
@@ -81,7 +84,7 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         // Extract items
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.s-item'))
-            return items.map(item => {
+            const standardResults = items.map(item => {
                 // Skip "Shop on eBay" or "Results matching..." headers which share the class
                 if (item.querySelector('.s-item__title--has-tags')) return null
 
@@ -118,6 +121,33 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     imageUrl
                 }
             }).filter(item => item !== null)
+
+            if (standardResults.length > 0) return standardResults;
+
+            // Fallback: Try finding links that look like items
+            // This captures cases where the class names might differ (e.g. mobile view)
+            const fallbackLinks = Array.from(document.querySelectorAll('a[href*="/itm/"]'));
+            return fallbackLinks.map(link => {
+                const url = link.getAttribute('href') || '';
+                const idMatch = url.match(/\/itm\/(\d+)/);
+                if (!idMatch) return null;
+
+                // Try to find title/price relative to the link
+                // This is a naive heuristic but better than 0 results
+                const container = link.closest('li') || link.closest('div');
+                const title = container?.innerText.split('\n')[0] || 'Unknown Item';
+                const priceText = container?.innerText.match(/\$[\d,.]+/)?.[0] || '0';
+                const price = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                const imageUrl = container?.querySelector('img')?.getAttribute('src') || '';
+
+                return {
+                    listingId: idMatch[1],
+                    title: title.substring(0, 100), // Safety cap
+                    price: price || 0,
+                    url: url,
+                    imageUrl: imageUrl
+                }
+            }).filter(i => i !== null && i.price > 0).slice(0, 10); // Limit fallbacks
         }) as ScraperResult[]
 
         if (results.length === 0) {
