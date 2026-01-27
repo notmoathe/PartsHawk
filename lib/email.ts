@@ -11,7 +11,7 @@ export async function sendNotificationEmail(to: string, hawkName: string, items:
     const resend = new Resend(apiKey)
 
     const { data, error } = await resend.emails.send({
-        from: 'Trace Motorsports <onboarding@resend.dev>', // Using default domain until you verify your own
+        from: 'Trace Motorsports <alerts@tracemotorsports.com>',
         to: [to],
         subject: `🦅 Found ${items.length} new items for "${hawkName}"`,
         html: `
