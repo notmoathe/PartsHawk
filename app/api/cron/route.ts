@@ -61,9 +61,21 @@ export async function GET(request: Request) {
                 hawk.vehicle_string || undefined
             )
 
+            // Filter Duplicates
+            const { data: existingListings } = await supabaseAdmin
+                .from('found_listings')
+                .select('url')
+                .eq('hawk_id', hawk.id)
+                .in('url', results.map(r => r.url))
+
+            const existingUrls = new Set(existingListings?.map(x => x.url) || [])
+            const newItems = results.filter(r => !existingUrls.has(r.url))
+
+            console.log(`[Cron] ${hawk.id}: Found ${results.length} total, ${newItems.length} are new.`)
+
             // Save Results
-            if (results.length > 0) {
-                const insertData = results.map(r => ({
+            if (newItems.length > 0) {
+                const insertData = newItems.map(r => ({
                     hawk_id: hawk.id,
                     title: r.title,
                     price: r.price,
@@ -87,8 +99,8 @@ export async function GET(request: Request) {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                content: `🦅 **PartHawk Alert**\nFound ${results.length} new items for **${hawk.keywords}**\n${hawk.vehicle_string ? `*Vehicle: ${hawk.vehicle_string}*\n` : ''}`,
-                                embeds: results.slice(0, 10).map(r => ({
+                                content: `🦅 **PartHawk Alert**\nFound ${newItems.length} new items for **${hawk.keywords}**\n${hawk.vehicle_string ? `*Vehicle: ${hawk.vehicle_string}*\n` : ''}`,
+                                embeds: newItems.slice(0, 10).map(r => ({
                                     title: r.title,
                                     url: r.url,
                                     description: `Price: $${r.price}\nSource: ${hawk.source}`,
@@ -106,7 +118,7 @@ export async function GET(request: Request) {
             // Update last_scanned_at
             await supabaseAdmin.from('hawks').update({ last_scanned_at: new Date().toISOString() }).eq('id', hawk.id)
 
-            return { id: hawk.id, status: 'scanned', items: results.length }
+            return { id: hawk.id, status: 'scanned', items: newItems.length }
 
         } catch (e) {
             console.error(`[Cron] Failed to process hawk ${hawk.id}`, e)

@@ -61,9 +61,21 @@ export async function POST(request: Request) {
 
         console.log(`[Scrape API] Scraper returned ${results.length} items`)
 
-        // 4. Save Results
-        if (results.length > 0) {
-            const insertData = results.map(r => ({
+        // 4. Filter Duplicates (Prevent Spam)
+        // We only want to notify about *new* listings we haven't seen for this hawk
+        const { data: existingListings } = await supabaseAdmin
+            .from('found_listings')
+            .select('url')
+            .eq('hawk_id', hawk.id)
+            .in('url', results.map(r => r.url))
+
+        const existingUrls = new Set(existingListings?.map(x => x.url) || [])
+        const newItems = results.filter(r => !existingUrls.has(r.url))
+
+        console.log(`[Scrape API] Found ${results.length} total, ${newItems.length} are new.`)
+
+        if (newItems.length > 0) {
+            const insertData = newItems.map(r => ({
                 hawk_id: hawk.id,
                 title: r.title,
                 price: r.price,
@@ -99,8 +111,8 @@ export async function POST(request: Request) {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            content: `🦅 **PartHawk Alert**\nFound ${results.length} new items for **${freshHawk.keywords}**\n${freshHawk.vehicle_string ? `*Vehicle: ${freshHawk.vehicle_string}*\n` : ''}`,
-                            embeds: results.slice(0, 10).map((r: any) => ({
+                            content: `🦅 **PartHawk Alert**\nFound ${newItems.length} new items for **${freshHawk.keywords}**\n${freshHawk.vehicle_string ? `*Vehicle: ${freshHawk.vehicle_string}*\n` : ''}`,
+                            embeds: newItems.slice(0, 10).map((r: any) => ({
                                 title: r.title,
                                 url: r.url,
                                 description: `Price: $${r.price}\nSource: ${freshHawk.source}`,
@@ -115,7 +127,7 @@ export async function POST(request: Request) {
             }
         }
 
-        return NextResponse.json({ success: true, count: results.length })
+        return NextResponse.json({ success: true, count: newItems.length })
 
     } catch (e: unknown) {
         console.error("Scrape API Failed:", e)
