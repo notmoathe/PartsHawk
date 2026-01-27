@@ -133,16 +133,10 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     listingId,
                     title,
                     price,
-                    const url = `https://www.ebay.com/itm/${listingId}`
-                    
-                return {
-                        listingId,
-                        title,
-                        price,
-                        url,
-                        imageUrl
-                    }
-                }).filter(item => item !== null)
+                    url: `https://www.ebay.com/itm/${listingId}`,
+                    imageUrl
+                }
+            }).filter(item => item !== null)
 
             if (standardResults.length > 0) return standardResults;
 
