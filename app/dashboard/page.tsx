@@ -29,6 +29,7 @@ export default async function DashboardPage() {
     const { data: recentFinds } = await supabase
         .from('found_listings')
         .select('*, hawks ( max_price, keywords )')
+        .eq('is_dismissed', false) // Hide soft-deleted items
         .order('created_at', { ascending: false })
         .limit(20)
 

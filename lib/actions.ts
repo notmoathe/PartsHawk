@@ -132,9 +132,9 @@ export async function deleteFinding(id: string) {
 
     const { error } = await supabase
         .from('found_listings')
-        .delete()
+        .update({ is_dismissed: true })
         .eq('id', id)
-        .eq('user_id', user.id) // Ensure ownership
+        .eq('user_id', user.id)
 
     if (error) {
         console.error("Delete Error:", error)
