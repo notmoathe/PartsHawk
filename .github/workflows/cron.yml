@@ -1,0 +1,14 @@
+name: Trigger PartHawk Cron
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Runs every hour
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Cron Endpoint
+        run: |
+          curl -X GET ${{ secrets.PRODUCTION_URL }}/api/cron?force=true
