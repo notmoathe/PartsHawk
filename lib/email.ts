@@ -9,7 +9,7 @@ export async function sendNotificationEmail(to: string, hawkName: string, items:
     }
 
     const { data, error } = await resend.emails.send({
-        from: 'Trace Motorsports <updates@trace.motorsports.com>', // User needs to verify domain or use 'onboarding@resend.dev'
+        from: 'Trace Motorsports <onboarding@resend.dev>', // Using default domain until you verify your own
         to: [to],
         subject: `🦅 Found ${items.length} new items for "${hawkName}"`,
         html: `
