@@ -136,9 +136,6 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
 
                 // Clean price
                 const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
-
-                // Clean price
-                const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
                 // Clean Image URL
                 let finalImageUrl = imgEl?.getAttribute('src') || ''
                 if (finalImageUrl.startsWith('/')) finalImageUrl = `https://www.ebay.com${finalImageUrl}`
