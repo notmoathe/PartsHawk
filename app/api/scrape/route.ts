@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { scrape } from '@/lib/scraper'
 import { sendNotificationEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -22,8 +23,7 @@ export async function POST(request: Request) {
 
     // Create Admin Client for bypassing RLS during insert
     // This is required because the scraper is a "system" process adding data
-    const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
-    const supabaseAdmin = createSupabaseClient(
+    const supabaseAdmin = createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,
         {
