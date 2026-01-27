@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         // For now, fetching all active hawks is fine.
         const { data: hawks, error } = await supabaseAdmin
             .from('hawks')
-            .select('*, users:user_id ( email ), webhook_url, vehicle_string') // Join user to get email
+            .select('*, webhook_url, vehicle_string') // Join removed to avoid Schema Error (PGRST200)
             .eq('status', 'active')
 
         if (error || !hawks) {
