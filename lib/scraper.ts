@@ -57,6 +57,9 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
         const results = await page.evaluate(() => {
             const items = Array.from(document.querySelectorAll('.s-item'))
             return items.map(item => {
+                // Skip "Shop on eBay" or "Results matching..." headers which share the class
+                if (item.querySelector('.s-item__title--has-tags')) return null
+
                 const titleEl = item.querySelector('.s-item__title')
                 const priceEl = item.querySelector('.s-item__price')
                 const linkEl = item.querySelector('.s-item__link')
@@ -65,6 +68,9 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                 if (!titleEl || !priceEl || !linkEl) return null
 
                 const title = titleEl.textContent?.trim() || ''
+                // Filter out "Shop on eBay" if it sneaks through
+                if (title === 'Shop on eBay') return null
+
                 const priceText = priceEl.textContent?.trim() || ''
                 const url = linkEl.getAttribute('href') || ''
                 const imageUrl = imgEl?.getAttribute('src') || ''
@@ -72,7 +78,9 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                 // Extract ID from URL is safer than class names sometimes
                 // format: /itm/1234567890
                 const idMatch = url.match(/\/itm\/(\d+)/)
-                const listingId = idMatch ? idMatch[1] : ''
+                const listingId = idMatch ? idMatch[1] : null
+
+                if (!listingId) return null
 
                 // Clean price
                 const price = parseFloat(priceText.replace(/[^0-9.]/g, ''))
@@ -84,7 +92,7 @@ async function scrapeEbay(keywords: string, maxPrice: number, negativeKeywords: 
                     url,
                     imageUrl
                 }
-            }).filter(item => item !== null && item.listingId)
+            }).filter(item => item !== null)
         })
 
         // Filter negative keywords
