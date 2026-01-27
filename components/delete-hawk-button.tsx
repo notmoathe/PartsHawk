@@ -55,7 +55,7 @@ export function DeleteHawkButton({ id }: { id: string }) {
                 <AlertDialogFooter>
                     <AlertDialogCancel className="bg-black text-white border-zinc-800 hover:bg-zinc-900 hover:text-white uppercase font-bold tracking-wider text-xs">Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
                             e.preventDefault()
                             handleDelete()
                         }}
