@@ -31,7 +31,7 @@ export default async function DashboardPage() {
         .select('*, hawks ( max_price, keywords )')
         .eq('is_dismissed', false) // Hide soft-deleted items
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(100)
 
     const activeHawks = hawks?.filter(h => h.status === 'active').length || 0
     const totalFinds = recentFinds?.length || 0
