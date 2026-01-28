@@ -222,45 +222,58 @@ async function scrapeCraigslist(
 
             // Parse listings from HTML
             // Craigslist uses <li class="cl-static-search-result"> or similar
-            const listingRegex = /<li[^>]*class="[^"]*cl-static-search-result[^"]*"[^>]*>[\s\S]*?<\/li>/gi
-            const listings = html.match(listingRegex) || []
-
-            // Alternative: Look for result-row (older format)
-            const altRegex = /<li[^>]*class="[^"]*result-row[^"]*"[^>]*>[\s\S]*?<\/li>/gi
-            const altListings = html.match(altRegex) || []
-
-            const allListings = [...listings, ...altListings]
-
-            for (const listing of allListings) {
+            // 1. Try JSON-LD parsing (Most reliable for Title/Image/Price)
+            const jsonMatch = html.match(/<script[^>]*id="ld_searchpage_results"[^>]*>([\s\S]*?)<\/script>/)
+            let jsonItems: any[] = []
+            if (jsonMatch) {
                 try {
-                    // Extract URL and ID
-                    const urlMatch = listing.match(/href="(https:\/\/[^"]+\/(\d+)\.html)"/)
+                    const json = JSON.parse(jsonMatch[1])
+                    if (json.itemListElement) {
+                        jsonItems = json.itemListElement
+                    }
+                } catch (e) {
+                    console.error(`[Craigslist] JSON parse error:`, e)
+                }
+            }
+
+            // 2. Parse HTML List Items (Needed for URLs, matches index of JSON items)
+            const listingRegex = /<li[^>]*class="[^"]*cl-static-search-result[^"]*"[^>]*>[\s\S]*?<\/li>/gi
+            const htmlListings = html.match(listingRegex) || []
+
+            // If we have JSON items, use them (merged with URLs from HTML)
+            if (jsonItems.length > 0) {
+                for (let i = 0; i < jsonItems.length; i++) {
+                    const jsonItem = jsonItems[i].item
+                    const htmlItem = htmlListings[i] // Corresponds by index
+
+                    if (!jsonItem || !htmlItem) continue
+
+                    // Extract URL from HTML
+                    const urlMatch = htmlItem.match(/href="(https:\/\/[^"]+\.html)"/)
                     if (!urlMatch) continue
 
                     const listingUrl = urlMatch[1]
-                    const listingId = `cl-${region}-${urlMatch[2]}`
+                    // ID format: https://sfbay.craigslist.org/.../12345678.html
+                    const idMatch = listingUrl.match(/\/(\d+)\.html/)
+                    const listingId = idMatch ? `cl-${region}-${idMatch[1]}` : `cl-${region}-${Date.now()}-${i}`
 
                     if (seenIds.has(listingId)) continue
                     seenIds.add(listingId)
 
-                    // Extract title
-                    const titleMatch = listing.match(/<span[^>]*class="[^"]*label[^"]*"[^>]*>([^<]+)<\/span>/) ||
-                        listing.match(/<a[^>]*class="[^"]*titlestring[^"]*"[^>]*>([^<]+)<\/a>/) ||
-                        listing.match(/<a[^>]*>([^<]{10,100})<\/a>/)
-                    const title = titleMatch ? titleMatch[1].trim() : 'Unknown Item'
-
-                    // Extract price
-                    const priceMatch = listing.match(/\$[\d,]+/)
-                    const price = priceMatch ? parseFloat(priceMatch[0].replace(/[^0-9.]/g, '')) : 0
-
-                    // Extract image (if available)
-                    const imgMatch = listing.match(/src="([^"]+)"/) || listing.match(/data-ids="([^"]+)"/)
-                    let imageUrl = 'https://placehold.co/400x300?text=Craigslist'
-                    if (imgMatch && imgMatch[1].startsWith('http')) {
-                        imageUrl = imgMatch[1]
+                    // Get Image (high res from JSON)
+                    let imageUrl = 'https://placehold.co/400x300?text=No+Image'
+                    if (jsonItem.image && Array.isArray(jsonItem.image) && jsonItem.image.length > 0) {
+                        imageUrl = jsonItem.image[0]
+                    } else if (typeof jsonItem.image === 'string') {
+                        imageUrl = jsonItem.image
                     }
 
+                    // Get Price
+                    const price = parseFloat(jsonItem.offers?.price) || 0
+                    if (price > maxPrice) continue
+
                     // Check negative keywords
+                    const title = jsonItem.name || 'Unknown Item'
                     const titleLower = title.toLowerCase()
                     if (negativeKeywords.some(nk => titleLower.includes(nk.toLowerCase()))) {
                         continue
@@ -271,15 +284,52 @@ async function scrapeCraigslist(
                         title,
                         price,
                         url: listingUrl,
-                        imageUrl,
+                        imageUrl
                     })
-                } catch (parseError) {
-                    // Skip malformed listings
-                    continue
+                }
+            } else {
+                // Fallback: Legacy HTML Parsing
+                for (const listing of htmlListings) {
+                    try {
+                        const urlMatch = listing.match(/href="(https:\/\/[^"]+\/(\d+)\.html)"/)
+                        if (!urlMatch) continue
+
+                        const listingUrl = urlMatch[1]
+                        const listingId = `cl-${region}-${urlMatch[2]}`
+
+                        if (seenIds.has(listingId)) continue
+                        seenIds.add(listingId)
+
+                        // New HTML structure (div class="title")
+                        const titleMatch = listing.match(/<div[^>]*class="[^"]*title[^"]*"[^>]*>([^<]+)<\/div>/) ||
+                            listing.match(/<span[^>]*class="[^"]*label[^"]*"[^>]*>([^<]+)<\/span>/)
+                        const title = titleMatch ? titleMatch[1].trim() : 'Unknown Item'
+
+                        const priceMatch = listing.match(/<div[^>]*class="[^"]*price[^"]*"[^>]*>\$([\d,]+)<\/div>/)
+                        const price = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : 0
+
+                        if (price > maxPrice) continue
+
+                        // Check negative keywords
+                        const titleLower = title.toLowerCase()
+                        if (negativeKeywords.some(nk => titleLower.includes(nk.toLowerCase()))) {
+                            continue
+                        }
+
+                        allResults.push({
+                            listingId,
+                            title,
+                            price,
+                            url: listingUrl,
+                            imageUrl: 'https://placehold.co/400x300?text=No+Image'
+                        })
+                    } catch (err) {
+                        // Skip faulty listing
+                    }
                 }
             }
 
-            console.log(`[Craigslist] ${region}: found ${allListings.length} listings`)
+            console.log(`[Craigslist] ${region}: found ${htmlListings.length} listings`)
 
             // Small delay between regions to be polite
             await new Promise(r => setTimeout(r, 500))
