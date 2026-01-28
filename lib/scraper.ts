@@ -32,9 +32,11 @@ const REGION_MAP: Record<string, string[]> = {
 // Helper: Check if keywords look like a part number
 // Matches: 123-456, 123456, A123-4567-B, etc. Valid part numbers usually contain numbers.
 function isPartNumber(text: string): boolean {
-    // Basic heuristic: At least one digit, no spaces (or very few), possibly dashes/alphanumeric
-    // We'll strip spaces and dashes and check if alphanumeric
-    const stripped = text.replace(/[\s-]/g, '')
+    // If it has spaces, it's likely a sentence or Year Make Model search (e.g. "2010 Infiniti EX35")
+    if (text.includes(' ')) return false
+
+    // Basic heuristic: At least one digit, no spaces, possibly dashes/alphanumeric
+    const stripped = text.replace(/-/g, '')
     // Must contain a number and be at least 5 chars long to avoid generic words like "Bolt"
     return /\d/.test(stripped) && stripped.length >= 5 && /^[a-zA-Z0-9]+$/.test(stripped)
 }
